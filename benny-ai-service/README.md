@@ -1,6 +1,6 @@
 1. Set Up & Run
 # create virtual environment
-cd ai-service
+cd benny-ai-service
 python -m venv benny-env
 source benny-env/bin/activate  # macOS/Linux benny-env\Scripts\activate   # Windows
 pip install -r requirements.txt

@@ -1,0 +1,12 @@
+# Virtual Environment
+benny-env/
+venv/
+env/
+
+# Environment Variables (secrets)
+.env
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
