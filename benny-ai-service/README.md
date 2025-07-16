@@ -36,7 +36,7 @@ json
 {
     "success": true,
     "response": "Fiber is an important part of healthy digestion...",
-    "tokens_used": 45
+    "tokens_used": 300
 }
 
 Test Benny in the Browser
@@ -48,6 +48,7 @@ chat function: fetch('http://localhost:8001/chat')
 
 Citations
 Claude AI used for planning and implementing chatbot development.
+- Benny testing generation
 Youtube Videos for learning about Azure, OpenAI, chatbot development
 https://youtu.be/jQyYeYWD97I?si=8GYBJ7TQR6ChuIBh
 https://www.youtube.com/watch?v=u0AUwOKxUsg
