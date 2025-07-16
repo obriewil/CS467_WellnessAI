@@ -90,7 +90,7 @@ class wellness_ai_db:
         CREATE TABLE IF NOT EXISTS user_four_week (
             row_id SERIAL PRIMARY KEY,
             date DATE NOT NULL,
-            week INT NOT NULLL
+            week INT NOT NULL
             );
             """
         self.run_query(query)
@@ -103,7 +103,7 @@ class wellness_ai_db:
             row_id SERIAL PRIMARY KEY,
             program_row_id INT NOT NULL,
             activity_name VARCHAR(255) NOT NULL,
-            activity_addresses_goal INT REFERENCES user_priorities(user_ref_pref_id),
+            activity_addresses_goal INT REFERENCES user_priorities(user_preference_id),
             CONSTRAINT fk_row_id FOREIGN KEY (program_row_id) REFERENCES user_program(row_id)
         );
         """
@@ -140,6 +140,7 @@ class wellness_ai_db:
         row_id SERIAL PRIMARY KEY,
         daily_log_id INT NOT NULL,
         activity_name VARCHAR(255) NOT NULL,
+        user_success INT NOT NULL,
         activity_addresses_goal INT REFERENCES user_priorities(user_ref_pref_id),
         CONSTRAINTS fk_log FOREIGN KEY (daily_log_id) REFERENCES daily_log_table(row_id)
         );
@@ -164,14 +165,51 @@ class wellness_ai_db:
 
     #build four weeks worth of rows in four week plan
     def build_full_four_week_plan(self):
-        day=0
+        self.run_query("DROP TABLE IF EXISTS user_four_week;")
+        self.create_four_week_plan() #drop existing table and reinitialize an empty one
+        now = datetime.datetime.now()
+        input_date = now
+        day = 0
         week=1
-        while(day<=28):
-            day+=1
+        while(day<=28): #build 28 new rows for new 4 week plan, with ascending primary keys corresponding to days from today
             week += (day%7)
-            self.add_four_week_plan_row(day, week)
+            day+=1
+            input_date += datetime.timedelta(days=1)
+            self.add_four_week_plan_row(input_date, week)
 
-    #
+    #adds newly generated 4 week plan to full program
+    def add_four_weeks_to_existing_program(self):
+        now = datetime.datetime.now()
+        input_date = now
+        day = 0
+        while(day<=28): #adds 28 new rows to ideal plan table
+            day+=1
+            input_date += datetime.timedelta(days=1)
+            self.add_ideal_plan_row(input_date)
+
+    #gets user priority pk based on goal name
+    def get_user_priority_pk(self, goal_name):
+        goal_pk = self.run_query("SELECT user_preference_id FROM user_priorities WHERE preference_name=(?);", goal_name)
+        return goal_pk
+
+    #adds an activity to the full ideal program
+    def add_activity_to_full_ideal_program(self, input_date, activity_name):
+        main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", input_date)
+        activity_pk = self.get_user_priority_pk(activity_name)
+        self.run_query("INSERT INTO daily_activities_ref (program_row_id,activity_name, activity_addresses_goal) VALUES (?,?,?);", main_prog_row_id, activity_name, activity_pk)
+    
+    #add an activity to four week program for specific date
+    def add_activity_to_four_week_program(self, input_date, activity_name):
+        main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", input_date)
+        activity_pk = self.get_user_priority_pk(activity_name)
+        self.run_query("INSERT INTO daily_activities_ref (program_row_id,activity_name, activity_addresses_goal) VALUES (?,?,?);", main_prog_row_id, activity_name, activity_pk)
+
+    #adds an activity to both four week program and full ideal program
+    def add_programmed_activity(self, input_date, activity_name):
+        self.add_activity_to_four_week_program(input_date, activity_name)
+        self.add_activity_to_full_ideal_program(input_date, activity_name)
+        
+
 
 
 main_db = wellness_ai_db()
