@@ -113,7 +113,7 @@ class wellness_ai_db:
     # date/activity pairing for goal calendar, stores activities and what user goals those activities work towards.
     def create_sql_activity_planning_table_four_week(self):
         query = """
-        CREATE TABLE IF NOT EXISTS daily_activities_ref(
+        CREATE TABLE IF NOT EXISTS daily_activities_ref_four(
             row_id SERIAL PRIMARY KEY,
             program_row_id INT NOT NULL,
             activity_name VARCHAR(255) NOT NULL,
@@ -151,9 +151,7 @@ class wellness_ai_db:
     def set_preferences(self, pref_name, pref_rank):
         self.run_query("INSERT INTO user_priorities (user_rating, preference_name) VALUES (?, ?);", pref_name, pref_rank)
 
-    #add row to daily log
-    def add_daily_log_row(self, today_date):
-        self.run_query("INSERT INTO daily_log_table (log_date) VALUES (?);", today_date)
+    
 
     # adds a row to the four week plan
     def add_four_week_plan_row(self, input_date, input_week):
@@ -166,7 +164,9 @@ class wellness_ai_db:
     #build four weeks worth of rows in four week plan
     def build_full_four_week_plan(self):
         self.run_query("DROP TABLE IF EXISTS user_four_week;")
+        self.run_query("DROP TABLE IF EXISTS user_activity_ref_four;")
         self.create_four_week_plan() #drop existing table and reinitialize an empty one
+        self.create_sql_activity_planning_table_four_week()
         now = datetime.datetime.now()
         input_date = now
         day = 0
@@ -202,12 +202,22 @@ class wellness_ai_db:
     def add_activity_to_four_week_program(self, input_date, activity_name):
         main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", input_date)
         activity_pk = self.get_user_priority_pk(activity_name)
-        self.run_query("INSERT INTO daily_activities_ref (program_row_id,activity_name, activity_addresses_goal) VALUES (?,?,?);", main_prog_row_id, activity_name, activity_pk)
+        self.run_query("INSERT INTO daily_activities_ref_four (program_row_id,activity_name, activity_addresses_goal) VALUES (?,?,?);", main_prog_row_id, activity_name, activity_pk)
 
     #adds an activity to both four week program and full ideal program
     def add_programmed_activity(self, input_date, activity_name):
         self.add_activity_to_four_week_program(input_date, activity_name)
         self.add_activity_to_full_ideal_program(input_date, activity_name)
+        
+    #add row to daily log and populate planned activities
+    def add_daily_log_row(self, today_date):
+        self.run_query("INSERT INTO daily_log_table (log_date) VALUES (?);", today_date)
+        log_pk_id = self.run_query("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
+        main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", today_date)
+        planned_activities = self.run_query("SELECT * FROM daily_activity_ref WHERE program_row_id=(?);", main_prog_row_id)
+        activities = planned_activities.fetchall()
+        for activity in activities:
+            self.run_query("INSERT INTO log_activities (daily_log_id, activity_name, user_success, activity_addresses_goal) VALUES (?,?, 0,?);", log_pk_id, activity[2], activity[3])
         
 
 
