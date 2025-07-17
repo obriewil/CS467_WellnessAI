@@ -3,14 +3,14 @@
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
+from typing import Dict, Optional
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 
-
-# source path to import Benny
 sys.path.append(str(Path(__file__).parent.parent))
 from core.benny import BennyWellnessAI
 
@@ -37,21 +37,33 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+
 # REQUEST / RESPONSE MODEL
 class ChatRequest(BaseModel):
     message: str
+    user_id: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
     success: bool
     response: str
     tokens_used: int
+    error: Optional[str] = None 
 
 # API ENDPOINTS
 @app.get("/")
 async def root():
     """Basic info endpoint"""
-    return {"message": "Benny Wellness AI", "docs": "/docs"}
+    return {
+        "service": "Benny Wellness AI",
+        "version": "1.0.0",
+        "endpoints": {
+            "chat": "/chat",
+            "recommend": "/recommend",
+            "health": "/heath",
+            "docs": "/docs"
+        }
+    }
 
 
 @app.get("/health")
@@ -64,8 +76,6 @@ async def health():
 async def chat(request: ChatRequest):
     """
         Chat with Benny
-        Timeout error handling/response
-        Technical error handling/response
     """
     # Benny not responding
     if not benny:
@@ -76,26 +86,28 @@ async def chat(request: ChatRequest):
         )
 
     try:
-        # timeout if no response from Benny
-        result = await asyncio.wait_for(benny.chat(request.message), timeout=30.0)
+        # Call benny with timeout
+        result = await asyncio.wait_for(
+            benny.chat(request.message, request.user_id), timeout=30.0)
 
         return ChatResponse(
             success=result["success"],
-            response=result.get("response", "Sorry, something went wrong"),
-            tokens_used=result.get("tokens_used", 0)
+            response=result.get("response", ""),
+            tokens_used=result.get("tokens_used", 0),
+            error=result.get("error")
         )
     except asyncio.TimeoutError:
         return ChatResponse(
             success=False,
             response="Benny: I'm thinking extra hard, could you ask me again?",
-            tokens_used=0
+            error="timeout"
         )
     except Exception as e:
         print(f"Chat error: {e}")
         return ChatResponse(
             success=False,
             response="Benny: Having technical difficulties. Let's try again.",
-            tokens_used=0
+            error=str(e)
         )
 
 # RUN SERVER
