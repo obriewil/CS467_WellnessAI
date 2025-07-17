@@ -218,6 +218,12 @@ class wellness_ai_db:
         activities = planned_activities.fetchall()
         for activity in activities:
             self.run_query("INSERT INTO log_activities (daily_log_id, activity_name, user_success, activity_addresses_goal) VALUES (?,?, 0,?);", log_pk_id, activity[2], activity[3])
+
+    #updates user success from default of 0 to 1 if user successfully completed activity
+    def update_user_success_daily_log(self, today_date, activity_name, user_success):
+        log_pk_id = self.run_query("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
+        activity_row_id = self.run_query("SELECT row_id FROM log_activities WHERE (daily_log_id=(?)) AND (activity_name=(?));", log_pk_id, activity_name)
+        self.run_query("UPDATE log_activities SET user_success = (?) WHERE row_id = (?);", user_success, activity_row_id)
         
 
 
