@@ -83,12 +83,11 @@ class BennyWellnessAI:
         
         print("Benny initialized successful!")
 
-    async def chat(self, message: str, user_id: Optional[str] = None) -> Dict: 
+    async def chat(self, message: str) -> Dict: 
         """
         Chat with Benny
         Args:
             message: User's message
-            user_id: optional for user id
         
         Returns: 
             Response dictionary with chat response
@@ -96,25 +95,51 @@ class BennyWellnessAI:
 
         return await self._generate_response(
             message=message,
-            mode=BennyMode.CHAT,
-            user_id=user_id
+            mode=BennyMode.CHAT
         )
     
-    async def recommend(self, daily_checkin: Dict, user_id:
-                        Optional[str] = None) -> Dict:
+    async def recommend(self, daily_checkin: Dict) -> Dict:
         """
         Get wellness recommendation based on daily check-in from user
         Args:
             daily_checkin: Dict with keys:
                 nutrition, fitness, stress, sleep
-            user_id: option user id
 
-        Returns: Response diction with one-sentence recommendation
+        Returns: Response dictionary with one-sentence recommendation
         """
-        pass
+        checkin_message = self._format_checkin(daily_checkin)
 
-    async def _generate_response(self, message: str, mode: BennyMode,
-                                 user_id: Optional[str] = None) -> Dict:
+        benny_prompt = f"""
+        Here is today's check in Data: 
+        {checkin_message}
+
+        Please provide one specific recommendation for today
+        that will have the biggest positive impact.
+        Focus on the area that needs the most improvement
+        """
+
+        return await self._generate_response(
+            message=benny_prompt,
+            mode=BennyMode.RECOMMEND
+        )
+    
+    def _format_checkin(self, daily_checkin: Dict) -> str:
+        """Format daily checkin-data to send to ai"""
+        message = ""
+
+        for response in daily_checkin:
+            if response == "nutrition":
+                message += "Today my nutrition {response.nutrition}. "
+            elif response == "fitness":
+                message += "Was I able to complete my planned fitness, {response.fitness} "
+            elif response == "stress":
+                message += "My stress was {response.stress}. "
+            elif response == "sleep":
+                message += "My sleep quality was {response.sleep}. "
+        
+        return message
+
+    async def _generate_response(self, message: str, mode: BennyMode) -> Dict:
         """Internal method to generate response response"""
 
         try:
@@ -156,8 +181,7 @@ class BennyWellnessAI:
                 "response": benny_response,
                 "mode": mode.value,
                 "tokens_used": response.usage.total_tokens,
-                "timestamp": datetime.now().isoformat(),
-                "user_id": user_id
+                "timestamp": datetime.now().isoformat()
             }
             
         except Exception as e:
@@ -166,8 +190,7 @@ class BennyWellnessAI:
                 "error": str(e),
                 "mode": mode.value,
                 "response": self._get_fallback_response(mode),
-                "timestamp": datetime.now().isoformat(),
-                "user_id": user_id
+                "timestamp": datetime.now().isoformat()
             }
    
     def _get_fallback_response(self, mode: BennyMode) -> str:
