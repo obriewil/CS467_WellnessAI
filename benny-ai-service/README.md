@@ -22,6 +22,8 @@ port: http://127.0.0.1:8001
 HEALTH CHECK
 GET /health
 
+Returns: {"status": "healthy", "benny_ready": true}
+
 CHAT
 POST /chat
 Content-Type: application/json
@@ -37,6 +39,39 @@ json
     "success": true,
     "response": "Fiber is an important part of healthy digestion...",
     "tokens_used": 300
+    "error": null
+}
+
+React Example
+// Chat with Benny
+const chatWithBenny = async (message) => {
+  const response = await fetch('http://localhost:8001/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  
+  const data = await response.json();
+  return data.success ? data.response : "Benny is taking a break!";
+};
+
+RECOMMEND
+POST /recommend
+Content-Type: application/json
+
+{
+    "nutrition": "",
+    "fitness": "",
+    "stress": "",
+    "sleep: ""
+}
+
+Response
+{
+    "success": true,
+    "response": "Focus on establishing a consistent bedtime routine...",
+    "tokens_used": 32,
+    "error": null
 }
 
 Test Benny in the Browser
