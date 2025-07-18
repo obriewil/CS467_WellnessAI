@@ -1,6 +1,7 @@
 import psycopg2
 from psycopg2 import Error
 import datetime
+import requests
 
 
 
@@ -46,6 +47,16 @@ class wellness_ai_db:
         self.run_query(query)
         self.build_possible_pref_table()
         
+    #build daily reporting form
+    def daily_report_form(self):
+        query = """
+        CREATE TABLE IF NOT EXISTS log_questions(
+        row_id SERIAL PRIMARY KEY,
+        question VARCHAR(255),
+        response INT
+        );"""
+        self.run_query(query)
+
 
     #build possible preferences table
     def build_possible_pref_table(self):
