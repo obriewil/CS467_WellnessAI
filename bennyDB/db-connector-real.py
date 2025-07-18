@@ -27,6 +27,7 @@ class wellness_ai_db:
         self.create_four_week_plan()
         self.create_sql_create_ideal_plan_table()
         self.create_log_table()
+        self.create_check_in_question_table()
         print("initialized")
 
 
@@ -157,6 +158,20 @@ class wellness_ai_db:
         );
         """
         self.run_query(query)
+
+    #create daily check in questions table
+    def create_check_in_question_table(self):
+        self.run_query("DROP TABLE questions;")
+        query = """
+        CREATE TABLE IF NOT EXISTS questions(
+        row_id SERIAL PRIMARY KEY,
+        question_text VARCHAR(255)
+        );"""
+        self.run_query(query)
+        
+        self.run_query("INSERT INTO questions (question_text) VALUES ('How did you feel about your nutrition today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Did you complete your planned fitness activity today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('How would you rate your stress levels today?');")
 
     #sets user preferences, takes as input a ranking integer and a goal name input
     def set_preferences(self, pref_name, pref_rank):
