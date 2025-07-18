@@ -140,8 +140,11 @@ class wellness_ai_db:
         query = """
         CREATE TABLE IF NOT EXISTS daily_log_table(
         row_id SERIAL PRIMARY KEY,
-        log_date DATE NOT NULL
-        )
+        log_date DATE NOT NULL,
+        sleep_quality VARCHAR(255),
+        stress_level VARCHAR(255),
+        nutrition VARCHAR(255)
+        );
         """
         self.run_query(query)
 
@@ -169,9 +172,12 @@ class wellness_ai_db:
         );"""
         self.run_query(query)
         
-        self.run_query("INSERT INTO questions (question_text) VALUES ('How did you feel about your nutrition today?');")
-        self.run_query("INSERT INTO questions (question_text) VALUES ('Did you complete your planned fitness activity today?');")
-        self.run_query("INSERT INTO questions (question_text) VALUES ('How would you rate your stress levels today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Ready for our daily check in? How did you feel about your nutrition choices today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('And how would you rate your sleep last night?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Now for fitness. Did you complete your planned fitness activity today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Finally, let's check in on your well-being. How would you rate your stress levels today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Thanks for completing our check in. You're doing great!')")
+
 
     #sets user preferences, takes as input a ranking integer and a goal name input
     def set_preferences(self, pref_name, pref_rank):
