@@ -10,6 +10,8 @@ DB_NAME = ""
 DB_USER = ""
 DB_PASSWORD = ""
 DB_PORT = 5432 # Default PostgreSQL port
+FRONTEND_URL = "http://localhost:5173/"
+BENNY_AI_URL = "http://127.0.0.1:8001"
 
 
 class wellness_ai_db:
@@ -258,6 +260,19 @@ class wellness_ai_db:
         self.run_query("UPDATE log_activities SET user_success = (?) WHERE row_id = (?);", user_success, activity_row_id)
         
 
+    #returns form questions for frontend
+    def get_form_questions_daily_checkin(self):
+        self.cursor.execute("""SELECT * FROM questions;""")
+        questions = self.cursor.fetchall()
+        requests.post(FRONTEND_URL, questions)
+
+    #sends form answers to benny ai
+    def send_form_responses_to_benny(self):
+        now = datetime.datetime.now()
+        now = now.date()
+        self.cursor.execute("""SELECT (sleep_quality, stress_level, nutrition) FROM daily_log_table WHERE log_date=(?);""", now)
+        log_data = self.cursor.fetchone()
+        requests.post(BENNY_AI_URL, log_data)
 
 
 main_db = wellness_ai_db()
