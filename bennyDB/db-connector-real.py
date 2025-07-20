@@ -32,7 +32,7 @@ class wellness_ai_db:
         self.create_check_in_question_table()
         print("initialized")
 
-
+##########  Database Manipulation Functions  ######################
     #generic run-query function
     def run_query(self, query, *query_args):
         do_it = self.cursor.execute(query, [*query_args])
@@ -246,11 +246,13 @@ class wellness_ai_db:
     #add row to daily log and populate planned activities
     def add_daily_log_row(self, today_date):
         self.run_query("INSERT INTO daily_log_table (log_date) VALUES (?);", today_date)
-        log_pk_id = self.run_query("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
-        main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", today_date)
-        planned_activities = self.run_query("SELECT * FROM daily_activity_ref WHERE program_row_id=(?);", main_prog_row_id)
-        activities = planned_activities.fetchall()
-        for activity in activities:
+        self.cursor.execute("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
+        log_pk_id = self.cursor.fetchone()
+        self.cursor.execute("SELECT row_id FROM user_program WHERE date=(?);", today_date)
+        main_prog_row_id = self.cursor.fetchone()
+        self.cursor.execute("SELECT * FROM daily_activity_ref WHERE program_row_id=(?);", main_prog_row_id)
+        planned_activities = self.cursor.fetchall()
+        for activity in planned_activities:
             self.run_query("INSERT INTO log_activities (daily_log_id, activity_name, user_success, activity_addresses_goal) VALUES (?,?, 0,?);", log_pk_id, activity[2], activity[3])
 
     #updates user success from default of 0 to 1 if user successfully completed activity
@@ -258,21 +260,53 @@ class wellness_ai_db:
         log_pk_id = self.run_query("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
         activity_row_id = self.run_query("SELECT row_id FROM log_activities WHERE (daily_log_id=(?)) AND (activity_name=(?));", log_pk_id, activity_name)
         self.run_query("UPDATE log_activities SET user_success = (?) WHERE row_id = (?);", user_success, activity_row_id)
-        
 
+    #retrieve log form responses for today 
+    def get_form_responses_for_benny(self):
+        now = datetime.datetime.now()
+        now = now.date()
+        self.cursor.execute("""SELECT (sleep_quality, stress_level, nutrition) FROM daily_log_table WHERE log_date=(?);""", now)
+        log_data = self.cursor.fetchone() 
+        return log_data
+    
     #returns form questions for frontend
     def get_form_questions_daily_checkin(self):
         self.cursor.execute("""SELECT * FROM questions;""")
         questions = self.cursor.fetchall()
-        requests.post(FRONTEND_URL, questions)
+        return questions
+    
+#################  API communication functions  #########################
 
-    #sends form answers to benny ai
-    def send_form_responses_to_benny(self):
-        now = datetime.datetime.now()
-        now = now.date()
-        self.cursor.execute("""SELECT (sleep_quality, stress_level, nutrition) FROM daily_log_table WHERE log_date=(?);""", now)
-        log_data = self.cursor.fetchone()
-        requests.post(BENNY_AI_URL, log_data)
+    #send data to frontend
+    def send_data_to_frontend(self, frontend_data):
+        try:    
+            data = requests.post(FRONTEND_URL, data=frontend_data)
+            data.raise_for_status() #error handling
+        except requests.exceptions.ConnectionError as e:
+            print(f"Error connecting to Frontend API at {FRONTEND_URL}: {e}")
+            return {"error": "Frontend API connection failed"}
+        except requests.exceptions.Timeout as e:
+            print(f"Frontend API request timed out: {e}")
+            return {"error": "Frontend API timeout"}
+        except requests.exceptions.RequestException as e:
+            print(f"Error calling Frontend API: {e}")
+            return {"error": f"Frontend API request failed: {e}"}
 
+
+    #send data to benny ai
+    def send_data_to_benny(self, ai_data):
+        try:    
+            data = requests.post(BENNY_AI_URL, data=ai_data)
+            data.raise_for_status() #error handling
+        except requests.exceptions.ConnectionError as e:
+            print(f"Error connecting to Benny API at {BENNY_AI_URL}: {e}")
+            return {"error": "Benny API connection failed"}
+        except requests.exceptions.Timeout as e:
+            print(f"Benny API request timed out: {e}")
+            return {"error": "Benny API timeout"}
+        except requests.exceptions.RequestException as e:
+            print(f"Error calling Benny API: {e}")
+            return {"error": f"Benny API request failed: {e}"}
+         
 
 main_db = wellness_ai_db()
