@@ -1,6 +1,7 @@
 import psycopg2
 from psycopg2 import Error
 import datetime
+import requests
 
 
 
@@ -9,6 +10,8 @@ DB_NAME = ""
 DB_USER = ""
 DB_PASSWORD = ""
 DB_PORT = 5432 # Default PostgreSQL port
+FRONTEND_URL = "http://localhost:5173/"
+BENNY_AI_URL = "http://127.0.0.1:8001"
 
 
 class wellness_ai_db:
@@ -26,9 +29,10 @@ class wellness_ai_db:
         self.create_four_week_plan()
         self.create_sql_create_ideal_plan_table()
         self.create_log_table()
+        self.create_check_in_question_table()
         print("initialized")
 
-
+##########  Database Manipulation Functions  ######################
     #generic run-query function
     def run_query(self, query, *query_args):
         do_it = self.cursor.execute(query, [*query_args])
@@ -46,6 +50,16 @@ class wellness_ai_db:
         self.run_query(query)
         self.build_possible_pref_table()
         
+    #build daily reporting form
+    def daily_report_form(self):
+        query = """
+        CREATE TABLE IF NOT EXISTS log_questions(
+        row_id SERIAL PRIMARY KEY,
+        question VARCHAR(255),
+        response INT
+        );"""
+        self.run_query(query)
+
 
     #build possible preferences table
     def build_possible_pref_table(self):
@@ -128,8 +142,11 @@ class wellness_ai_db:
         query = """
         CREATE TABLE IF NOT EXISTS daily_log_table(
         row_id SERIAL PRIMARY KEY,
-        log_date DATE NOT NULL
-        )
+        log_date DATE NOT NULL,
+        sleep_quality VARCHAR(255),
+        stress_level VARCHAR(255),
+        nutrition VARCHAR(255)
+        );
         """
         self.run_query(query)
 
@@ -146,6 +163,23 @@ class wellness_ai_db:
         );
         """
         self.run_query(query)
+
+    #create daily check in questions table
+    def create_check_in_question_table(self):
+        self.run_query("DROP TABLE questions;")
+        query = """
+        CREATE TABLE IF NOT EXISTS questions(
+        row_id SERIAL PRIMARY KEY,
+        question_text VARCHAR(255)
+        );"""
+        self.run_query(query)
+        
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Ready for our daily check in? How did you feel about your nutrition choices today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('And how would you rate your sleep last night?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Now for fitness. Did you complete your planned fitness activity today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Finally, let's check in on your well-being. How would you rate your stress levels today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Thanks for completing our check in. You're doing great!')")
+
 
     #sets user preferences, takes as input a ranking integer and a goal name input
     def set_preferences(self, pref_name, pref_rank):
@@ -212,14 +246,67 @@ class wellness_ai_db:
     #add row to daily log and populate planned activities
     def add_daily_log_row(self, today_date):
         self.run_query("INSERT INTO daily_log_table (log_date) VALUES (?);", today_date)
-        log_pk_id = self.run_query("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
-        main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", today_date)
-        planned_activities = self.run_query("SELECT * FROM daily_activity_ref WHERE program_row_id=(?);", main_prog_row_id)
-        activities = planned_activities.fetchall()
-        for activity in activities:
+        self.cursor.execute("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
+        log_pk_id = self.cursor.fetchone()
+        self.cursor.execute("SELECT row_id FROM user_program WHERE date=(?);", today_date)
+        main_prog_row_id = self.cursor.fetchone()
+        self.cursor.execute("SELECT * FROM daily_activity_ref WHERE program_row_id=(?);", main_prog_row_id)
+        planned_activities = self.cursor.fetchall()
+        for activity in planned_activities:
             self.run_query("INSERT INTO log_activities (daily_log_id, activity_name, user_success, activity_addresses_goal) VALUES (?,?, 0,?);", log_pk_id, activity[2], activity[3])
-        
+
+    #updates user success from default of 0 to 1 if user successfully completed activity
+    def update_user_success_daily_log(self, today_date, activity_name, user_success):
+        log_pk_id = self.run_query("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
+        activity_row_id = self.run_query("SELECT row_id FROM log_activities WHERE (daily_log_id=(?)) AND (activity_name=(?));", log_pk_id, activity_name)
+        self.run_query("UPDATE log_activities SET user_success = (?) WHERE row_id = (?);", user_success, activity_row_id)
+
+    #retrieve log form responses for today 
+    def get_form_responses_for_benny(self):
+        now = datetime.datetime.now()
+        now = now.date()
+        self.cursor.execute("""SELECT (sleep_quality, stress_level, nutrition) FROM daily_log_table WHERE log_date=(?);""", now)
+        log_data = self.cursor.fetchone() 
+        return log_data
+    
+    #returns form questions for frontend
+    def get_form_questions_daily_checkin(self):
+        self.cursor.execute("""SELECT * FROM questions;""")
+        questions = self.cursor.fetchall()
+        return questions
+    
+#################  API communication functions  #########################
+
+    #send data to frontend
+    def send_data_to_frontend(self, frontend_data):
+        try:    
+            data = requests.post(FRONTEND_URL, data=frontend_data)
+            data.raise_for_status() #error handling
+        except requests.exceptions.ConnectionError as e:
+            print(f"Error connecting to Frontend API at {FRONTEND_URL}: {e}")
+            return {"error": "Frontend API connection failed"}
+        except requests.exceptions.Timeout as e:
+            print(f"Frontend API request timed out: {e}")
+            return {"error": "Frontend API timeout"}
+        except requests.exceptions.RequestException as e:
+            print(f"Error calling Frontend API: {e}")
+            return {"error": f"Frontend API request failed: {e}"}
 
 
+    #send data to benny ai
+    def send_data_to_benny(self, ai_data):
+        try:    
+            data = requests.post(BENNY_AI_URL, data=ai_data)
+            data.raise_for_status() #error handling
+        except requests.exceptions.ConnectionError as e:
+            print(f"Error connecting to Benny API at {BENNY_AI_URL}: {e}")
+            return {"error": "Benny API connection failed"}
+        except requests.exceptions.Timeout as e:
+            print(f"Benny API request timed out: {e}")
+            return {"error": "Benny API timeout"}
+        except requests.exceptions.RequestException as e:
+            print(f"Error calling Benny API: {e}")
+            return {"error": f"Benny API request failed: {e}"}
+         
 
 main_db = wellness_ai_db()
