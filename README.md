@@ -51,7 +51,9 @@ cd CS467_WellnessAI
 ## 2. Run the Frontend
 
 cd benny-frontend
+
 npm install
+
 npm run dev
 
 PORT: http://localhost:5173
