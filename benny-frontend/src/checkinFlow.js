@@ -4,14 +4,14 @@ import bennyIcon from './assets/benny_icon.png';
 export const checkinFlow = [
   {
     type: 'ai',
-    text: "Hi Jimmy! Ready for our daily check-in? Let's start with your nutrition. How did you feel about your food choices today?",
-    buttons: ['Feeling Great', 'It was Okay', 'Needs Improvement'],
+    text: "Hi! I'm Benny, your personal recipe assistant. What type of meal are you looking to create today?",
+    buttons: ['Breakfast', 'Lunch', 'Dinner', 'Dessert'],
     icon: bennyIcon,
   },
   {
     type: 'ai',
-    text: "That's fantastic! Now for fitness. Did you complete your planned activity today?",
-    buttons: ['Yes', 'No'],
+    text: "Excellent choice! How much time are you working with for this meal?",
+    buttons: ['Under 30 min', '30-60 min', 'More than an hour'],
     icon: bennyIcon,
   },
   {
