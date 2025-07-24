@@ -33,13 +33,13 @@ class wellness_ai_db:
         self.create_check_in_question_table()
         print("initialized")
 
-##########  Database TABLE BUILD Functions  ######################
+
     #generic run-query function
     def run_query(self, query, *query_args):
         do_it = self.cursor.execute(query, [*query_args])
         self.db.commit()
         return do_it
-
+##########  Database TABLE BUILD Functions  ######################
 
     # full list of selectable goal preferences
     def create_sql_possible_preferences_table(self):
@@ -149,9 +149,9 @@ class wellness_ai_db:
     def create_check_in_question_table(self):
         self.run_query("DROP TABLE questions;")
         query = """
-        CREATE TABLE IF NOT EXISTS questions(
-        row_id SERIAL PRIMARY KEY,
-        question_text VARCHAR(255)
+            CREATE TABLE IF NOT EXISTS questions(
+            row_id SERIAL PRIMARY KEY,
+            question_text VARCHAR(255)
         );"""
         self.run_query(query)
         self.run_query("INSERT INTO questions (question_text) VALUES ('Ready for our daily check in? How did you feel about your nutrition choices today?');")
@@ -164,15 +164,15 @@ class wellness_ai_db:
 
     #sets user preferences, takes as input a ranking integer and a goal name input
     def set_preferences(self, pref_name, pref_rank):
-        self.run_query("INSERT INTO user_priorities (user_rating, preference_name) VALUES (?, ?);", pref_name, pref_rank)
+        self.run_query("INSERT INTO user_priorities (user_rating, preference_name) VALUES (%s, %s);", (pref_name, pref_rank))
 
     # remove instances of current four week plan when building a new one
     def reset_four_week_status(self):
-        self.run_query("UPDATE user_program SET in_curr_four_week = (0) WHERE in_curr_four_week = (1);")
+        self.run_query("UPDATE user_program SET in_curr_four_week = (%s) WHERE in_curr_four_week = (%s)",(0, 1))
 
     # adds a row to the four week plan
-    def add_four_week_plan_row(self, input_date, input_week):
-        self.run_query("INSERT INTO user_program (date, in_curr_four_week) VALUES (,1);", input_date)
+    def add_four_week_plan_row(self, input_date):
+        self.run_query("INSERT INTO user_program (date, in_curr_four_week) VALUES (%s,%s);", (input_date,1))
 
 
     #build four weeks worth of rows in four week plan
@@ -190,39 +190,33 @@ class wellness_ai_db:
 
     #adds an activity to the full ideal program
     def add_activity_to_full_ideal_program(self, input_date, activity_name):
-        main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", input_date)
+        main_prog_row_id = self.dictcursor.execute("SELECT * FROM user_program WHERE date=(%s);", (input_date,))
+        main_prog_row_id = main_prog_row_id["row_id"]
         activity_pk = self.get_user_priority_pk(activity_name)
-        self.run_query("INSERT INTO daily_activities_ref (program_row_id,activity_name, activity_addresses_goal) VALUES (?,?,?);", main_prog_row_id, activity_name, activity_pk)
+        self.run_query("INSERT INTO daily_activities_ref (program_row_id,activity_name, activity_addresses_goal) VALUES (%s, %s, %s);", (main_prog_row_id, activity_name, activity_pk))
     
-    #add an activity to four week program for specific date
-    def add_activity_to_four_week_program(self, input_date, activity_name):
-        main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", input_date)
-        activity_pk = self.get_user_priority_pk(activity_name)
-        self.run_query("INSERT INTO daily_activities_ref_four (program_row_id,activity_name, activity_addresses_goal) VALUES (?,?,?);", main_prog_row_id, activity_name, activity_pk)
 
     #adds an activity to both four week program and full ideal program
     def add_programmed_activity(self, input_date, activity_name):
-        self.add_activity_to_four_week_program(input_date, activity_name)
         self.add_activity_to_full_ideal_program(input_date, activity_name)
         
     #add row to daily log and populate planned activities
     def add_daily_log_row(self, today_date):
-        self.run_query("INSERT INTO daily_log_table (log_date) VALUES (?);", today_date)
-        self.dictcursor.execute("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
+        self.run_query("INSERT INTO daily_log_table (log_date) VALUES (%s)", today_date)
+        self.dictcursor.execute("SELECT * FROM daily_log_table WHERE log_date = (%s)", (today_date,))
         log_pk_id = self.dictcursor.fetchone()
-        self.dictcursor.execute("SELECT row_id FROM user_program WHERE date=(?);", today_date)
+        self.dictcursor.execute("SELECT * FROM user_program WHERE date=(%s);", (today_date,))
         main_prog_row_id = self.dictcursor.fetchone()
-        self.dictcursor.execute("SELECT * FROM daily_activity_ref WHERE program_row_id=(?);", main_prog_row_id)
+        self.dictcursor.execute("SELECT * FROM daily_activity_ref WHERE program_row_id=(%s);", (main_prog_row_id["row_id"],))
         planned_activities = self.dictcursor.fetchall()
         for activity in planned_activities:
-            self.run_query("INSERT INTO log_activities (daily_log_id, activity_name, user_success, activity_addresses_goal) VALUES (?,?, 0,?);", log_pk_id, activity[2], activity[3])
+            self.run_query("INSERT INTO log_activities (daily_log_id, activity_name, user_success, activity_addresses_goal) VALUES (%s, %s, %s, %s);", (log_pk_id["row_id"], activity[2],0, activity[3]))
 
     #updates user success from default of 0 to 1 if user successfully completed activity
     def update_user_success_daily_log(self, today_date, activity_name, user_success):
-        log_pk_id = self.dictcursor.execute("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
-
-        activity_row_id = self.run_query("SELECT row_id FROM log_activities WHERE (daily_log_id=(?)) AND (activity_name=(?));", log_pk_id, activity_name)
-        self.run_query("UPDATE log_activities SET user_success = (?) WHERE row_id = (?);", user_success, activity_row_id)
+        log_pk_id = self.dictcursor.execute("SELECT row_id FROM daily_log_table WHERE log_date = (%s)", (today_date,))
+        activity_row_id = self.run_query("SELECT row_id FROM log_activities WHERE (daily_log_id=(%s)) AND (activity_name=(%s));", log_pk_id["row_id"], activity_name)
+        self.run_query("UPDATE log_activities SET user_success = (%s) WHERE row_id = (%s);", user_success, activity_row_id)
 
 ############ DATABASE GET FUNCTIONS ##################
 
