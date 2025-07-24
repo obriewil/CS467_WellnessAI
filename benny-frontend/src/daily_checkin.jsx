@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import Header from './components/Header'; // Using the shared Header
-import { checkinFlow } from './checkinFlow'; // Import the conversation steps
+import Header from './components/Header';
+import { checkinFlow } from './checkinFlow';
 import ChatBubble from './components/ChatBubble';
-import bennyIcon from './assets/benny_icon.png'; // Import the icon for the title
-
-// The ChatInput component is no longer needed.
+import bennyIcon from './assets/benny_icon.png'; 
 
 const DailyCheckin = () => {
   const [messages, setMessages] = useState([]);
@@ -12,7 +10,6 @@ const DailyCheckin = () => {
   const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
-    // Start the flow with the first question from the mock data
     setMessages([checkinFlow[0]]);
   }, []);
 
@@ -46,8 +43,8 @@ const DailyCheckin = () => {
       <Header />
       <main className="flex flex-col items-center pt-16 px-4 bg-white min-h-screen">
         <img src={bennyIcon} alt="Benny the Beaver" className="w-20 h-20 mb-4" />
-        <h2 className="text-3xl font-bold mb-2 text-gray-800">Daily Check-in</h2>
-        <p className="text-gray-500 mb-8">Let's see how you're doing today.</p>
+        <h2 className="text-3xl font-bold mb-2 text-gray-800">Recipe Planner</h2>
+        <p className="text-gray-500 mb-8">pee pee poo poo</p>
 
         {/* This div contains the chat bubbles */}
         <div className="w-full max-w-3xl">
