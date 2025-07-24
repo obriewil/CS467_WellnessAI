@@ -1,4 +1,4 @@
-name: Run Python and JavaScript Tests
+name: Run Unittests for benny-ai-service
 
 on:
   push:
