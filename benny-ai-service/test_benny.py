@@ -35,7 +35,7 @@ class TestBennyWelness(unittest.TestCase):
         message = "Hello Benny"
         result = asyncio.run(self.benny.chat(message))
 
-        self.assertTrue(result["success"])
+        self.assertTrue(result["success FAILURE"])
         self.assertIn("response", result)
         self.assertGreater(len(result["response"]), 0)
         self.assertGreater(result["tokens_used"], 0)
