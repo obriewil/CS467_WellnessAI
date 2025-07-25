@@ -1,62 +1,61 @@
-import psycopg2
-from psycopg2 import Error
+# Citations: 
+# Referencing DB manager skeleton accessed from https://www.pythonguis.com/examples/kivy-to-do-app/,
+# my own work based off of this db manager I produced for CS361, 
+# and CS361 course materials. 
+
 import datetime
 import requests
+import sqlite3
+import pathlib
 
 
-
-DB_HOST = ""  # e.g., "34.123.45.67"
-DB_NAME = ""
-DB_USER = ""
-DB_PASSWORD = ""
-DB_PORT = 5432 # Default PostgreSQL port
 FRONTEND_URL = "http://localhost:5173/"
 BENNY_AI_URL = "http://127.0.0.1:8001"
+
+DATABASE_PATH = pathlib.Path(__file__).parent / "BennyDB.sqlite3"
 
 
 class wellness_ai_db:
     def __init__(self):
-        self.db = psycopg2.connect(
-            host=DB_HOST,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            port=DB_PORT
-        )
+        self.db = sqlite3.connect(DATABASE_PATH)
         self.cursor = self.db.cursor()
         self.create_sql_possible_preferences_table()
         self.create_sql_user_preferences_table()
-        self.create_four_week_plan()
         self.create_sql_create_ideal_plan_table()
         self.create_log_table()
         self.create_check_in_question_table()
         print("initialized")
 
-##########  Database Manipulation Functions  ######################
+
     #generic run-query function
     def run_query(self, query, *query_args):
         do_it = self.cursor.execute(query, [*query_args])
         self.db.commit()
         return do_it
 
+
+##########  Database TABLE BUILD Functions  ######################
+
     # full list of selectable goal preferences
     def create_sql_possible_preferences_table(self):
-        query = """CREATE TABLE IF NOT EXISTS preferences_list (
-        preference_id SERIAL PRIMARY KEY,
-        preference_name VARCHAR(255)
+        query = """
+            CREATE TABLE IF NOT EXISTS preferences_list (
+            preference_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            preference_name VARCHAR(255)
         );
         """
         self.run_query("DROP TABLE preferences_list;")
         self.run_query(query)
         self.build_possible_pref_table()
-        
+
+
     #build daily reporting form
     def daily_report_form(self):
         query = """
-        CREATE TABLE IF NOT EXISTS log_questions(
-        row_id SERIAL PRIMARY KEY,
-        question VARCHAR(255),
-        response INT
+            CREATE TABLE IF NOT EXISTS log_questions(
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question VARCHAR(255),
+            response INTEGER
         );"""
         self.run_query(query)
 
@@ -73,208 +72,184 @@ class wellness_ai_db:
         self.run_query("INSERT INTO preferences_list(preference_name) VALUES ('fruit and veggie intake');")
         self.run_query("INSERT INTO preferences_list(preference_name) VALUES ('hydration');")
 
+
     # stores user goal preferences/ranking 
     def create_sql_user_preferences_table(self):
         query = """
-        CREATE TABLE IF NOT EXISTS user_priorities (
-            user_preference_id SERIAL PRIMARY KEY,
-            user_rating INT,
+            CREATE TABLE IF NOT EXISTS user_priorities (
+            user_preference_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_rating INTEGER,
             preference_name VARCHAR(255) NOT NULL REFERENCES preferences_list(preference_name),
-            user_ref_pref_id INT,
+            user_ref_pref_id INTEGER,
             CONSTRAINT fk_preference_id FOREIGN KEY (user_ref_pref_id) REFERENCES preferences_list(preference_id)
         );
         """
         self.run_query(query)
 
     
-    # calendar for planning ideal program
+    # calendar for planning ideal program, will contain column for identifying which rows are in the four week display
     def create_sql_create_ideal_plan_table(self):
         query = """
-        CREATE TABLE IF NOT EXISTS user_program (
-            row_id SERIAL PRIMARY KEY,
-            date DATE NOT NULL
-            
-            );
-        """
-        self.run_query(query)
-
-    # four week running ideal program
-    def create_four_week_plan(self):
-        query = """
-        CREATE TABLE IF NOT EXISTS user_four_week (
-            row_id SERIAL PRIMARY KEY,
-            date DATE NOT NULL,
-            week INT NOT NULL
-            );
-            """
-        self.run_query(query)
-
-    
-    # date/activity pairing for goal calendar, stores activities and what user goals those activities work towards.
-    def create_sql_activity_planning_table(self):
-        query = """
-        CREATE TABLE IF NOT EXISTS daily_activities_ref(
-            row_id SERIAL PRIMARY KEY,
-            program_row_id INT NOT NULL,
+            CREATE TABLE IF NOT EXISTS user_program (
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date VARCHAR(255) NOT NULL,
             activity_name VARCHAR(255) NOT NULL,
-            activity_addresses_goal INT REFERENCES user_priorities(user_preference_id),
-            CONSTRAINT fk_row_id FOREIGN KEY (program_row_id) REFERENCES user_program(row_id)
+            activity_addresses_goal INTEGER NOT NULL,
+            in_curr_four_week INTEGER NOT NULL,
+            FOREIGN KEY (activity_addresses_goal) REFERENCES user_priorities(user_preference_id)
         );
         """
         self.run_query(query)
 
-
-    # date/activity pairing for goal calendar, stores activities and what user goals those activities work towards.
-    def create_sql_activity_planning_table_four_week(self):
-        query = """
-        CREATE TABLE IF NOT EXISTS daily_activities_ref_four(
-            row_id SERIAL PRIMARY KEY,
-            program_row_id INT NOT NULL,
-            activity_name VARCHAR(255) NOT NULL,
-            activity_addresses_goal INT REFERENCES user_priorities(user_ref_pref_id),
-            CONSTRAINT fk_row_id FOREIGN KEY (program_row_id) REFERENCES user_four_week(row_id)
-        );
-        """
-        self.run_query(query)
 
     #creates daily log table
     def create_log_table(self):
         query = """
-        CREATE TABLE IF NOT EXISTS daily_log_table(
-        row_id SERIAL PRIMARY KEY,
-        log_date DATE NOT NULL,
-        sleep_quality VARCHAR(255),
-        stress_level VARCHAR(255),
-        nutrition VARCHAR(255)
+            CREATE TABLE IF NOT EXISTS daily_log_table(
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_program_row_id INTEGER NOT NULL,
+            log_date VARCHAR(255) NOT NULL,
+            sleep_quality VARCHAR(255),
+            stress_level VARCHAR(255),
+            nutrition VARCHAR(255),
+            activity_complete INTEGER NOT NULL,
+            activity_name VARCHAR(255),
+            activity_addresses_goal INTEGER NOT NULL,
+            FOREIGN KEY (activity_addresses_goal) REFERENCES user_priorities(user_ref_pref_id),
+            FOREIGN KEY (user_program_row_id) REFERENCES user_program(row_id)
         );
         """
         self.run_query(query)
 
-    #create daily_log_activity table
-    def create_daily_log_activity(self):
-        query = """
-        CREATE TABLE IF NOT EXISTS log_activities(
-        row_id SERIAL PRIMARY KEY,
-        daily_log_id INT NOT NULL,
-        activity_name VARCHAR(255) NOT NULL,
-        user_success INT NOT NULL,
-        activity_addresses_goal INT REFERENCES user_priorities(user_ref_pref_id),
-        CONSTRAINTS fk_log FOREIGN KEY (daily_log_id) REFERENCES daily_log_table(row_id)
-        );
-        """
-        self.run_query(query)
 
     #create daily check in questions table
     def create_check_in_question_table(self):
         self.run_query("DROP TABLE questions;")
         query = """
-        CREATE TABLE IF NOT EXISTS questions(
-        row_id SERIAL PRIMARY KEY,
-        question_text VARCHAR(255)
+            CREATE TABLE IF NOT EXISTS questions(
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question_text VARCHAR(255)
         );"""
         self.run_query(query)
-        
         self.run_query("INSERT INTO questions (question_text) VALUES ('Ready for our daily check in? How did you feel about your nutrition choices today?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('And how would you rate your sleep last night?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('Now for fitness. Did you complete your planned fitness activity today?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('Finally, let's check in on your well-being. How would you rate your stress levels today?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('Thanks for completing our check in. You're doing great!')")
 
+############### DATABASE ADD AND UPDATE FUNCTIONS ###############
 
     #sets user preferences, takes as input a ranking integer and a goal name input
     def set_preferences(self, pref_name, pref_rank):
         self.run_query("INSERT INTO user_priorities (user_rating, preference_name) VALUES (?, ?);", pref_name, pref_rank)
 
-    
+    # remove instances of current four week plan when building a new one
+    def reset_four_week_status(self):
+        self.run_query("UPDATE user_program SET in_curr_four_week = (?) WHERE in_curr_four_week = (?)", 0, 1)
 
     # adds a row to the four week plan
-    def add_four_week_plan_row(self, input_date, input_week):
-        self.run_query("INSERT INTO user_four_week (date, week) VALUES (?,?);", input_date, input_week)
+    def add_four_week_plan_row(self, input_date):
+        self.run_query("INSERT INTO user_program (date, in_curr_four_week) VALUES (?,?);", input_date,1)
 
-    #add row to ideal plan
-    def add_ideal_plan_row(self, input_date):
-        self.run_query("INSERT INTO user_program (date) VALUES (?);", input_date)
 
     #build four weeks worth of rows in four week plan
     def build_full_four_week_plan(self):
-        self.run_query("DROP TABLE IF EXISTS user_four_week;")
-        self.run_query("DROP TABLE IF EXISTS user_activity_ref_four;")
-        self.create_four_week_plan() #drop existing table and reinitialize an empty one
-        self.create_sql_activity_planning_table_four_week()
+        self.reset_four_week_status()
         now = datetime.datetime.now()
+        now = now.date()
         input_date = now
         day = 0
-        week=1
         while(day<=28): #build 28 new rows for new 4 week plan, with ascending primary keys corresponding to days from today
-            week += (day%7)
             day+=1
             input_date += datetime.timedelta(days=1)
-            self.add_four_week_plan_row(input_date, week)
+            nowstring = now.strftime("%m/%d/%Y")
+            self.add_four_week_plan_row(nowstring)
 
-    #adds newly generated 4 week plan to full program
-    def add_four_weeks_to_existing_program(self):
-        now = datetime.datetime.now()
-        input_date = now
-        day = 0
-        while(day<=28): #adds 28 new rows to ideal plan table
-            day+=1
-            input_date += datetime.timedelta(days=1)
-            self.add_ideal_plan_row(input_date)
-
-    #gets user priority pk based on goal name
-    def get_user_priority_pk(self, goal_name):
-        goal_pk = self.run_query("SELECT user_preference_id FROM user_priorities WHERE preference_name=(?);", goal_name)
-        return goal_pk
 
     #adds an activity to the full ideal program
     def add_activity_to_full_ideal_program(self, input_date, activity_name):
         main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", input_date)
+        main_prog_row_id = main_prog_row_id[1]
         activity_pk = self.get_user_priority_pk(activity_name)
-        self.run_query("INSERT INTO daily_activities_ref (program_row_id,activity_name, activity_addresses_goal) VALUES (?,?,?);", main_prog_row_id, activity_name, activity_pk)
+        self.run_query("INSERT INTO daily_activities_ref (program_row_id,activity_name, activity_addresses_goal) VALUES (?,?,?);", (main_prog_row_id, activity_name, activity_pk))
     
-    #add an activity to four week program for specific date
-    def add_activity_to_four_week_program(self, input_date, activity_name):
-        main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", input_date)
-        activity_pk = self.get_user_priority_pk(activity_name)
-        self.run_query("INSERT INTO daily_activities_ref_four (program_row_id,activity_name, activity_addresses_goal) VALUES (?,?,?);", main_prog_row_id, activity_name, activity_pk)
 
     #adds an activity to both four week program and full ideal program
     def add_programmed_activity(self, input_date, activity_name):
-        self.add_activity_to_four_week_program(input_date, activity_name)
         self.add_activity_to_full_ideal_program(input_date, activity_name)
+
         
-    #add row to daily log and populate planned activities
+    #add row to daily log and populate planned activities (test indicies)
     def add_daily_log_row(self, today_date):
-        self.run_query("INSERT INTO daily_log_table (log_date) VALUES (?);", today_date)
-        self.cursor.execute("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
-        log_pk_id = self.cursor.fetchone()
-        self.cursor.execute("SELECT row_id FROM user_program WHERE date=(?);", today_date)
-        main_prog_row_id = self.cursor.fetchone()
-        self.cursor.execute("SELECT * FROM daily_activity_ref WHERE program_row_id=(?);", main_prog_row_id)
-        planned_activities = self.cursor.fetchall()
-        for activity in planned_activities:
-            self.run_query("INSERT INTO log_activities (daily_log_id, activity_name, user_success, activity_addresses_goal) VALUES (?,?, 0,?);", log_pk_id, activity[2], activity[3])
+        program_get = self.user_program_day_get(today_date)
+        main_prog_row_id = program_get[0]
+        main_prog_activity = program_get[2]
+        main_prog_activity_reason = program_get[3]
+        self.run_query("INSERT INTO daily_log_table (user_program_row_id, log_date, activity_complete, activity_name, activity_addresses_goal) VALUES (?)", main_prog_row_id, today_date, 0, main_prog_activity, main_prog_activity_reason)
+
 
     #updates user success from default of 0 to 1 if user successfully completed activity
-    def update_user_success_daily_log(self, today_date, activity_name, user_success):
-        log_pk_id = self.run_query("SELECT row_id FROM daily_log_table WHERE log_date = (?);", today_date)
-        activity_row_id = self.run_query("SELECT row_id FROM log_activities WHERE (daily_log_id=(?)) AND (activity_name=(?));", log_pk_id, activity_name)
-        self.run_query("UPDATE log_activities SET user_success = (?) WHERE row_id = (?);", user_success, activity_row_id)
+    def update_user_success_daily_log(self, date):
+        self.run_query("UPDATE daily_log_table SET activity_complete=(?) WHERE log_date=(?);", 1, date)
 
-    #retrieve log form responses for today 
+
+    #undoes the user success logging above if needed for error recovery
+    def reset_user_success_daily_log(self, date):
+        self.run_query("UPDATE daily_log_table SET activity_complete=(?) WHERE log_date=(?);", 0, date)
+
+############ DATABASE GET FUNCTIONS ##################
+
+    #gets user priority pk based on goal name
+    def get_user_priority_pk(self, goal_name):
+        self.dictcursor.execute("SELECT * FROM user_priorities WHERE preference_name=(%s);", (goal_name,))
+        goal_pk = self.dictcursor.fetchone()
+        return goal_pk["user_preference_id"]
+    
+
+    #gets user preference ratings for benny decision making
+    def get_all_user_preferences(self):
+        preferences = self.run_query("SELECT * FROM user_priorities;")
+        return preferences.fetchall()
+
+
+    #get all user priorities
+    def get_user_priorities(self):
+        prios = self.run_query("SELECT * FROM user_priorities;")
+        return prios.fetchall()
+
+
+    #retrieve log form responses for today as dictionary
     def get_form_responses_for_benny(self):
         now = datetime.datetime.now()
         now = now.date()
-        self.cursor.execute("""SELECT (sleep_quality, stress_level, nutrition) FROM daily_log_table WHERE log_date=(?);""", now)
-        log_data = self.cursor.fetchone() 
-        return log_data
-    
-    #returns form questions for frontend
+        nowstring = now.strftime("%m/%d/%Y")
+        log_answers_para_bennward = self.run_query("SELECT * FROM daily_log_table WHERE log_date=(?);", nowstring)
+        return log_answers_para_bennward.fetchall()
+
+
+    #returns form questions for frontend as dictionary
     def get_form_questions_daily_checkin(self):
-        self.cursor.execute("""SELECT * FROM questions;""")
-        questions = self.cursor.fetchall()
-        return questions
+        questions = self.run_query("SELECT * FROM questions ORDER BY row_id ASCENDING;")
+        return questions.fetchall()
+
+
+    #returns 4 week plan
+    def get_four_week_plan(self):
+        four_week_plan_get = self.run_query("SELECT * FROM user_program WHERE in_curr_four_week=(%s) ORDER BY row_id ASCENDING", (1,))
+        return four_week_plan_get.fetchall()
+
+
+    #gets a row from the daily log based on date
+    def daily_log_row_fetch(self, date):
+        log_get = self.run_query("SELECT * FROM daily_log_table WHERE log_date = (?);", date)
+        return log_get.fetchone()
     
+
+    #gets a row from the user program based on date
+    def user_program_day_get(self, date):
+        program_get = self.run_query("SELECT * FROM user_program WHERE date = (?);", date)
+        return program_get.fetchone()
+
 #################  API communication functions  #########################
 
     #send data to frontend
@@ -308,5 +283,5 @@ class wellness_ai_db:
             print(f"Error calling Benny API: {e}")
             return {"error": f"Benny API request failed: {e}"}
          
-
+#### Main DB Backend ####
 main_db = wellness_ai_db()
