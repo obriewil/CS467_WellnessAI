@@ -1,31 +1,19 @@
-import psycopg2
-import psycopg2.extras
-from psycopg2 import Error
 import datetime
 import requests
+import sqlite3
+import pathlib
 
 
-
-DB_HOST = ""  # e.g., "34.123.45.67"
-DB_NAME = ""
-DB_USER = ""
-DB_PASSWORD = ""
-DB_PORT = 5432 # Default PostgreSQL port
 FRONTEND_URL = "http://localhost:5173/"
 BENNY_AI_URL = "http://127.0.0.1:8001"
+
+DATABASE_PATH = pathlib.Path(__file__).parent / "database.sqlite3"
 
 
 class wellness_ai_db:
     def __init__(self):
-        self.db = psycopg2.connect(
-            host=DB_HOST,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            port=DB_PORT
-        )
+        self.db = sqlite3.connect(DATABASE_PATH)
         self.cursor = self.db.cursor()
-        self.dictcursor = self.db.cursor(cursor_factory=psycopg2.extras.DictCursor)
         self.create_sql_possible_preferences_table()
         self.create_sql_user_preferences_table()
         self.create_sql_create_ideal_plan_table()
@@ -45,7 +33,7 @@ class wellness_ai_db:
     def create_sql_possible_preferences_table(self):
         query = """
             CREATE TABLE IF NOT EXISTS preferences_list (
-            preference_id SERIAL PRIMARY KEY,
+            preference_id INTEGER PRIMARY KEY AUTOINCREMENT,
             preference_name VARCHAR(255)
         );
         """
@@ -58,9 +46,9 @@ class wellness_ai_db:
     def daily_report_form(self):
         query = """
             CREATE TABLE IF NOT EXISTS log_questions(
-            row_id SERIAL PRIMARY KEY,
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
             question VARCHAR(255),
-            response INT
+            response INTEGER
         );"""
         self.run_query(query)
 
@@ -82,10 +70,10 @@ class wellness_ai_db:
     def create_sql_user_preferences_table(self):
         query = """
             CREATE TABLE IF NOT EXISTS user_priorities (
-            user_preference_id SERIAL PRIMARY KEY,
-            user_rating INT,
+            user_preference_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_rating INTEGER,
             preference_name VARCHAR(255) NOT NULL REFERENCES preferences_list(preference_name),
-            user_ref_pref_id INT,
+            user_ref_pref_id INTEGER,
             CONSTRAINT fk_preference_id FOREIGN KEY (user_ref_pref_id) REFERENCES preferences_list(preference_id)
         );
         """
@@ -96,9 +84,9 @@ class wellness_ai_db:
     def create_sql_create_ideal_plan_table(self):
         query = """
             CREATE TABLE IF NOT EXISTS user_program (
-            row_id SERIAL PRIMARY KEY,
-            date DATE NOT NULL,
-            in_curr_four_week INT NOT NULL
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date VARCHAR(255) NOT NULL,
+            in_curr_four_week INTEGER NOT NULL
         );
         """
         self.run_query(query)
@@ -108,10 +96,10 @@ class wellness_ai_db:
     def create_sql_activity_planning_table(self):
         query = """
         CREATE TABLE IF NOT EXISTS daily_activities_ref(
-            row_id SERIAL PRIMARY KEY,
-            program_row_id INT NOT NULL,
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            program_row_id INTEGER NOT NULL,
             activity_name VARCHAR(255) NOT NULL,
-            activity_addresses_goal INT REFERENCES user_priorities(user_preference_id),
+            activity_addresses_goal INTEGER REFERENCES user_priorities(user_preference_id),
             CONSTRAINT fk_row_id FOREIGN KEY (program_row_id) REFERENCES user_program(row_id)
         );
         """
@@ -122,8 +110,8 @@ class wellness_ai_db:
     def create_log_table(self):
         query = """
             CREATE TABLE IF NOT EXISTS daily_log_table(
-            row_id SERIAL PRIMARY KEY,
-            log_date DATE NOT NULL,
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            log_date VARCHAR(255) NOT NULL,
             sleep_quality VARCHAR(255),
             stress_level VARCHAR(255),
             nutrition VARCHAR(255)
