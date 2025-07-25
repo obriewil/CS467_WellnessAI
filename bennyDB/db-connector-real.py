@@ -32,6 +32,8 @@ class wellness_ai_db:
         do_it = self.cursor.execute(query, [*query_args])
         self.db.commit()
         return do_it
+
+
 ##########  Database TABLE BUILD Functions  ######################
 
     # full list of selectable goal preferences
