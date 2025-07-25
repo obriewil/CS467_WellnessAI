@@ -36,7 +36,7 @@ Make sure you have the following installed:
 
 - Node.js
 - Python 3.9+
-- PostgreSQL
+- SQLite3
 - pip
 - Git
 
@@ -128,7 +128,7 @@ PORT: http://localhost:8001
 
 Frontend: React, Tailwind CSS, React Router
 
-Backend: FastAPI, PostgreSQL, SQLAlchemy
+Backend: FastAPI, SQLite3, SQLAlchemy
 
 AI Service: Python + OpenAI API
 
