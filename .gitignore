@@ -1,0 +1,31 @@
+.DS_Store
+node_modules/
+benny-frontend/node_modules
+benny-frontend/src/.DS_Store
+benny-frontend/.DS_Store
+__pycache__/
+
+
+.env
+# Dependencies
+node_modules/
+__pycache__/
+
+# Environment files
+.env
+.env.local
+
+# Build outputs
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
