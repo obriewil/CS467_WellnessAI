@@ -86,21 +86,10 @@ class wellness_ai_db:
             CREATE TABLE IF NOT EXISTS user_program (
             row_id INTEGER PRIMARY KEY AUTOINCREMENT,
             date VARCHAR(255) NOT NULL,
-            in_curr_four_week INTEGER NOT NULL
-        );
-        """
-        self.run_query(query)
-
-    
-    # date/activity pairing for goal calendar, stores activities and what user goals those activities work towards.
-    def create_sql_activity_planning_table(self):
-        query = """
-        CREATE TABLE IF NOT EXISTS daily_activities_ref(
-            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            program_row_id INTEGER NOT NULL,
             activity_name VARCHAR(255) NOT NULL,
-            activity_addresses_goal INTEGER REFERENCES user_priorities(user_preference_id),
-            CONSTRAINT fk_row_id FOREIGN KEY (program_row_id) REFERENCES user_program(row_id)
+            activity_addresses_goal INTEGER NOT NULL,
+            in_curr_four_week INTEGER NOT NULL,
+            FOREIGN KEY (activity_addresses_goal) REFERENCES user_priorities(user_preference_id)
         );
         """
         self.run_query(query)
@@ -111,34 +100,27 @@ class wellness_ai_db:
         query = """
             CREATE TABLE IF NOT EXISTS daily_log_table(
             row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_program_row_id INTEGER NOT NULL,
             log_date VARCHAR(255) NOT NULL,
             sleep_quality VARCHAR(255),
             stress_level VARCHAR(255),
-            nutrition VARCHAR(255)
+            nutrition VARCHAR(255),
+            activity_complete INTEGER NOT NULL,
+            activity_name VARCHAR(255),
+            activity_addresses_goal INTEGER NOT NULL,
+            FOREIGN KEY (activity_addresses_goal) REFERENCES user_priorities(user_ref_pref_id),
+            FOREIGN KEY (user_program_row_id) REFERENCES user_program(row_id)
         );
         """
         self.run_query(query)
 
-    #create daily_log_activity table
-    def create_daily_log_activity(self):
-        query = """
-            CREATE TABLE IF NOT EXISTS log_activities(
-            row_id SERIAL PRIMARY KEY,
-            daily_log_id INT NOT NULL,
-            activity_name VARCHAR(255) NOT NULL,
-            user_success INT NOT NULL,
-            activity_addresses_goal INT REFERENCES user_priorities(user_ref_pref_id),
-            CONSTRAINTS fk_log FOREIGN KEY (daily_log_id) REFERENCES daily_log_table(row_id)
-        );
-        """
-        self.run_query(query)
 
     #create daily check in questions table
     def create_check_in_question_table(self):
         self.run_query("DROP TABLE questions;")
         query = """
             CREATE TABLE IF NOT EXISTS questions(
-            row_id SERIAL PRIMARY KEY,
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
             question_text VARCHAR(255)
         );"""
         self.run_query(query)
@@ -152,36 +134,37 @@ class wellness_ai_db:
 
     #sets user preferences, takes as input a ranking integer and a goal name input
     def set_preferences(self, pref_name, pref_rank):
-        self.run_query("INSERT INTO user_priorities (user_rating, preference_name) VALUES (%s, %s);", (pref_name, pref_rank))
+        self.run_query("INSERT INTO user_priorities (user_rating, preference_name) VALUES (?, ?);", pref_name, pref_rank)
 
     # remove instances of current four week plan when building a new one
     def reset_four_week_status(self):
-        self.run_query("UPDATE user_program SET in_curr_four_week = (%s) WHERE in_curr_four_week = (%s)",(0, 1))
+        self.run_query("UPDATE user_program SET in_curr_four_week = (?) WHERE in_curr_four_week = (?)", 0, 1)
 
     # adds a row to the four week plan
     def add_four_week_plan_row(self, input_date):
-        self.run_query("INSERT INTO user_program (date, in_curr_four_week) VALUES (%s,%s);", (input_date,1))
+        self.run_query("INSERT INTO user_program (date, in_curr_four_week) VALUES (?,?);", input_date,1)
 
 
     #build four weeks worth of rows in four week plan
     def build_full_four_week_plan(self):
         self.reset_four_week_status()
         now = datetime.datetime.now()
-        now = datetime.date()
+        now = now.date()
         input_date = now
         day = 0
         while(day<=28): #build 28 new rows for new 4 week plan, with ascending primary keys corresponding to days from today
             day+=1
             input_date += datetime.timedelta(days=1)
-            self.add_four_week_plan_row(input_date)
+            nowstring = now.strftime("%m/%d/%Y")
+            self.add_four_week_plan_row(nowstring)
 
 
     #adds an activity to the full ideal program
     def add_activity_to_full_ideal_program(self, input_date, activity_name):
-        main_prog_row_id = self.dictcursor.execute("SELECT * FROM user_program WHERE date=(%s);", (input_date,))
-        main_prog_row_id = main_prog_row_id["row_id"]
+        main_prog_row_id = self.run_query("SELECT row_id FROM user_program WHERE date=(?);", input_date)
+        main_prog_row_id = main_prog_row_id[1]
         activity_pk = self.get_user_priority_pk(activity_name)
-        self.run_query("INSERT INTO daily_activities_ref (program_row_id,activity_name, activity_addresses_goal) VALUES (%s, %s, %s);", (main_prog_row_id, activity_name, activity_pk))
+        self.run_query("INSERT INTO daily_activities_ref (program_row_id,activity_name, activity_addresses_goal) VALUES (?,?,?);", (main_prog_row_id, activity_name, activity_pk))
     
 
     #adds an activity to both four week program and full ideal program
