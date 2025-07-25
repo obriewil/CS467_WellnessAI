@@ -1,3 +1,8 @@
+# Citations: 
+# Referencing DB manager skeleton accessed from https://www.pythonguis.com/examples/kivy-to-do-app/,
+# my own work based off of this db manager I produced for CS361, 
+# and CS361 course materials. 
+
 import datetime
 import requests
 import sqlite3
@@ -7,7 +12,7 @@ import pathlib
 FRONTEND_URL = "http://localhost:5173/"
 BENNY_AI_URL = "http://127.0.0.1:8001"
 
-DATABASE_PATH = pathlib.Path(__file__).parent / "database.sqlite3"
+DATABASE_PATH = pathlib.Path(__file__).parent / "BennyDB.sqlite3"
 
 
 class wellness_ai_db:
@@ -170,24 +175,25 @@ class wellness_ai_db:
     #adds an activity to both four week program and full ideal program
     def add_programmed_activity(self, input_date, activity_name):
         self.add_activity_to_full_ideal_program(input_date, activity_name)
+
         
-    #add row to daily log and populate planned activities
+    #add row to daily log and populate planned activities (test indicies)
     def add_daily_log_row(self, today_date):
-        self.run_query("INSERT INTO daily_log_table (log_date) VALUES (%s)", today_date)
-        self.dictcursor.execute("SELECT * FROM daily_log_table WHERE log_date = (%s)", (today_date,))
-        log_pk_id = self.dictcursor.fetchone()
-        self.dictcursor.execute("SELECT * FROM user_program WHERE date=(%s);", (today_date,))
-        main_prog_row_id = self.dictcursor.fetchone()
-        self.dictcursor.execute("SELECT * FROM daily_activity_ref WHERE program_row_id=(%s);", (main_prog_row_id["row_id"],))
-        planned_activities = self.dictcursor.fetchall()
-        for activity in planned_activities:
-            self.run_query("INSERT INTO log_activities (daily_log_id, activity_name, user_success, activity_addresses_goal) VALUES (%s, %s, %s, %s);", (log_pk_id["row_id"], activity[2],0, activity[3]))
+        program_get = self.user_program_day_get(today_date)
+        main_prog_row_id = program_get[0]
+        main_prog_activity = program_get[2]
+        main_prog_activity_reason = program_get[3]
+        self.run_query("INSERT INTO daily_log_table (user_program_row_id, log_date, activity_complete, activity_name, activity_addresses_goal) VALUES (?)", main_prog_row_id, today_date, 0, main_prog_activity, main_prog_activity_reason)
+
 
     #updates user success from default of 0 to 1 if user successfully completed activity
-    def update_user_success_daily_log(self, today_date, activity_name, user_success):
-        log_pk_id = self.dictcursor.execute("SELECT row_id FROM daily_log_table WHERE log_date = (%s)", (today_date,))
-        activity_row_id = self.run_query("SELECT row_id FROM log_activities WHERE (daily_log_id=(%s)) AND (activity_name=(%s));", log_pk_id["row_id"], activity_name)
-        self.run_query("UPDATE log_activities SET user_success = (%s) WHERE row_id = (%s);", user_success, activity_row_id)
+    def update_user_success_daily_log(self, date):
+        self.run_query("UPDATE daily_log_table SET activity_complete=(?) WHERE log_date=(?);", 1, date)
+
+
+    #undoes the user success logging above if needed for error recovery
+    def reset_user_success_daily_log(self, date):
+        self.run_query("UPDATE daily_log_table SET activity_complete=(?) WHERE log_date=(?);", 0, date)
 
 ############ DATABASE GET FUNCTIONS ##################
 
@@ -198,36 +204,49 @@ class wellness_ai_db:
         return goal_pk["user_preference_id"]
     
 
+    #gets user preference ratings for benny decision making
+    def get_all_user_preferences(self):
+        preferences = self.run_query("SELECT * FROM user_priorities;")
+        return preferences.fetchall()
+
+
     #get all user priorities
     def get_user_priorities(self):
-        self.dictcursor.execute("SELECT * FROM user_priorities")
-        prios = self.dictcursor.fetchall()
-        return prios
+        prios = self.run_query("SELECT * FROM user_priorities;")
+        return prios.fetchall()
 
 
     #retrieve log form responses for today as dictionary
     def get_form_responses_for_benny(self):
         now = datetime.datetime.now()
         now = now.date()
-        self.dictcursor.execute("SELECT (sleep_quality, stress_level, nutrition) FROM daily_log_table WHERE log_date=(%s)", (now,))
-        log_data = self.dictcursor.fetchone() 
-        return log_data
+        nowstring = now.strftime("%m/%d/%Y")
+        log_answers_para_bennward = self.run_query("SELECT * FROM daily_log_table WHERE log_date=(?);", nowstring)
+        return log_answers_para_bennward.fetchall()
 
 
     #returns form questions for frontend as dictionary
     def get_form_questions_daily_checkin(self):
-        self.dictcursor.execute("SELECT * FROM questions")
-        questions = self.dictcursor.fetchall()
-        return questions
+        questions = self.run_query("SELECT * FROM questions ORDER BY row_id ASCENDING;")
+        return questions.fetchall()
 
 
     #returns 4 week plan
     def get_four_week_plan(self):
-        self.dictcursor.execute("SELECT * FROM user_program WHERE in_curr_four_week=(%s) ORDER BY row_id ASCENDING", (1,))
-        four_week_plan = self.dictcursor.fetchall()
-        return four_week_plan
+        four_week_plan_get = self.run_query("SELECT * FROM user_program WHERE in_curr_four_week=(%s) ORDER BY row_id ASCENDING", (1,))
+        return four_week_plan_get.fetchall()
 
 
+    #gets a row from the daily log based on date
+    def daily_log_row_fetch(self, date):
+        log_get = self.run_query("SELECT * FROM daily_log_table WHERE log_date = (?);", date)
+        return log_get.fetchone()
+    
+
+    #gets a row from the user program based on date
+    def user_program_day_get(self, date):
+        program_get = self.run_query("SELECT * FROM user_program WHERE date = (?);", date)
+        return program_get.fetchone()
 
 #################  API communication functions  #########################
 
