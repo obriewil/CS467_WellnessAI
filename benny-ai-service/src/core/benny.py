@@ -112,10 +112,11 @@ class BennyWellnessAI:
         benny_prompt = f"""
         Here is today's check in Data: 
         {checkin_message}
-
-        Please provide one specific recommendation for today
-        that will have the biggest positive impact.
-        Focus on the area that needs the most improvement
+        Do not repeat the checkin data to the user, instead
+        respond with one simple, actionable goal that will
+        make the biggest positive impact based on their response.
+        If all areas are good, give one actionable goal to improve.
+        Keep the suggestion short, to one actionable sentence and remain positive.
         """
 
         return await self._generate_response(
@@ -129,13 +130,13 @@ class BennyWellnessAI:
 
         for response in daily_checkin:
             if response == "nutrition":
-                message += "Today my nutrition {response.nutrition}. "
+                message += f"Today my nutrition was {daily_checkin[response]}. "
             elif response == "fitness":
-                message += "Was I able to complete my planned fitness, {response.fitness} "
+                message += f"Was I able to complete my planned fitness: {daily_checkin[response]} "
             elif response == "stress":
-                message += "My stress was {response.stress}. "
+                message += f"My stress was {daily_checkin[response]}. "
             elif response == "sleep":
-                message += "My sleep quality was {response.sleep}. "
+                message += f"My sleep quality was {daily_checkin[response]}. "
         
         return message
 
