@@ -10,14 +10,14 @@ import datetime
 import sys
 from pathlib import Path
 
-db = None
-# add bennyDB directory to Python path
-# bennydb_path = Path(__file__).parent.parent / "bennyDB"
-# sys.path.append(str(bennydb_path))
 
-# import db_connector_real
-# db = db_connector_real.wellness_ai_db()
-# print("Database connected successfully!")
+# add bennyDB directory to Python path
+bennydb_path = Path(__file__).parent.parent/"bennyDB"
+sys.path.append(str(bennydb_path))
+
+import db_connector_real
+db = db_connector_real.wellness_ai_db()
+print("Database connected successfully!")
 
 app = FastAPI()
 app.add_middleware(
@@ -43,24 +43,12 @@ class CheckInResponse(BaseModel):
 class CheckInSubmission(BaseModel):
     responses: List[CheckInResponse]
 
-class CheckInResult(BaseModel):
-    success: bool
-    message: str
-    data: Optional[dict] = None
-
 @app.get("/")
 async def root():
     """API info endpoint"""
     return {
         "service": "Benny Daily Check-in Backend",
-        "version": "1.0.0",
-        "status": "running",
         "database_connected": db is not None,
-        "endpoints": {
-            "questions": "/api/checkin/questions",
-            "submit": "/api/checkin/submit",
-            "health": "/health"
-        }
     }
 
 @app.get("/health")
@@ -73,43 +61,43 @@ async def health_check():
 
 @app.post("/api/checkin/submit")
 async def submit_checkin(submission: CheckInSubmission):
-    """Submit daily check-in responses (testing mode - no database)"""
+    """Submit daily check-in responses"""
     
+    if not db:
+        raise HTTPException(status_code=500, detail="Database not connected")
+
     try:
         # Get today's date
         today = datetime.datetime.now().strftime("%m/%d/%Y")
         
-        print("=== RECEIVED CHECK-IN SUBMISSION ===")
-        print(f"Date: {today}")
-        print(f"Number of responses: {len(submission.responses)}")
-        
-        # Process and log the responses
+        # Process the responses into the format the database expects
         checkin_data = {}
+        
         for response in submission.responses:
-            print(f"Category: {response.category}")
-            print(f"Question: {response.question}")
-            print(f"Response: {response.response}")
-            print("---")
-            
             checkin_data[response.category] = response.response
         
-        print("=== PROCESSED DATA ===")
-        print(f"Checkin data: {checkin_data}")
-        print("=== END SUBMISSION ===")
+        print(f"Saving check-in for {today}: {checkin_data}")
         
+        # Simple database insert
+        db.run_query("""
+            INSERT INTO daily_log_table 
+            (log_date, nutrition, sleep_quality, stress_level, activity_complete, activity_name, user_program_row_id, activity_addresses_goal)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, today, checkin_data.get("nutrition"), checkin_data.get("sleep"), 
+            checkin_data.get("stress"), 1, "Daily Check-in", 1, 1)
+        
+        print(f"Saved to database")
+
         return {
             "success": True,
-            "message": "Check-in received successfully! (Testing mode - not saved to database)",
-            "data": {
-                "date": today,
-                "responses": checkin_data,
-                "total_responses": len(submission.responses)
-            }
+            "message": "Check-in saved!",
+            "data": checkin_data
         }
         
     except Exception as e:
-        print(f"Error processing check-in: {e}")
-        raise HTTPException(status_code=500, detail=f"Submit error: {str(e)}")
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+           
 
 if __name__ == "__main__":
     print("Starting Benny Daily Check-in Backend (Testing Mode)...")

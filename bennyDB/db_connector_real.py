@@ -44,7 +44,7 @@ class wellness_ai_db:
             preference_name VARCHAR(255)
         );
         """
-        self.run_query("DROP TABLE preferences_list;")
+        self.run_query("DROP TABLE IF EXISTS preferences_list;")
         self.run_query(query)
         self.build_possible_pref_table()
 
@@ -124,7 +124,7 @@ class wellness_ai_db:
 
     #create daily check in questions table
     def create_check_in_question_table(self):
-        self.run_query("DROP TABLE questions;")
+        self.run_query("DROP TABLE IF EXISTS questions;")
         query = """
             CREATE TABLE IF NOT EXISTS questions(
             row_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -134,8 +134,8 @@ class wellness_ai_db:
         self.run_query("INSERT INTO questions (question_text) VALUES ('Ready for our daily check in? How did you feel about your nutrition choices today?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('And how would you rate your sleep last night?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('Now for fitness. Did you complete your planned fitness activity today?');")
-        self.run_query("INSERT INTO questions (question_text) VALUES ('Finally, let's check in on your well-being. How would you rate your stress levels today?');")
-        self.run_query("INSERT INTO questions (question_text) VALUES ('Thanks for completing our check in. You're doing great!')")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Finally, let us check in on your well-being. How would you rate your stress levels today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Thanks for completing our check in. You are doing great!')")
 
 ############### DATABASE ADD AND UPDATE FUNCTIONS ###############
 
