@@ -1,15 +1,14 @@
 from fastapi import FastAPI, HTTPException
-# from routers import auth  # Assuming auth.py is in routers folder 
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware 
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import datetime
-
-# Database import
 import sys
 from pathlib import Path
-
+from config import SECRET_KEY
+from routers import auth, users
 
 # add bennyDB directory to Python path
 bennydb_path = Path(__file__).parent.parent/"bennyDB"
@@ -18,6 +17,7 @@ sys.path.append(str(bennydb_path))
 import db_connector_real
 db = db_connector_real.wellness_ai_db()
 print("Database connected successfully!")
+
 
 app = FastAPI()
 app.add_middleware(
@@ -32,7 +32,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
-# app.include_router(auth.router)
+app.include_router(auth.router)
+app.include_router(users.router)
+
+# Add OUATH middleware
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # Pydantic models for request/response
 class CheckInResponse(BaseModel):
