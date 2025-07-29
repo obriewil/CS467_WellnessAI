@@ -15,6 +15,7 @@ const DailyCheckin = () => {
   // ADDED
   const [responses, setResponses] = useState([]);
   const [backendConnected, setBackendConnected] = useState(false);
+  const [bennyRecommendation, setBennyRecommendation] = useState(null);
 
 
   useEffect(() => {
@@ -22,6 +23,22 @@ const DailyCheckin = () => {
     testBackendConnection();
     initializeCheckin();
   }, []);
+
+
+  // Wait for Benny's recommendation
+  useEffect(() =>{
+    if (bennyRecommendation && isCompleted) {
+      setTimeout(() => {
+        const recommendationMessage = {
+          type: 'ai',
+          text: `Benny's Recommendation: ${bennyRecommendation}`,
+          buttons: [],
+          icon: bennyIcon
+        };
+        setMessages(prevMessages => [...prevMessages, recommendationMessage]);
+      }, 2000);
+    }
+  }, [bennyRecommendation, isCompleted]);
 
   const testBackendConnection = async () => {
     try {
@@ -83,7 +100,7 @@ const DailyCheckin = () => {
     console.log('Submitting check-in: ', finalResponses);
     
     try {
-      // send directly to backend
+      // Send to backend
       const response = await axios.post(`${BACKEND_URL}/api/checkin/submit`, {
         responses: finalResponses 
       });
@@ -92,11 +109,16 @@ const DailyCheckin = () => {
 
       if (response.data.success) {
         console.log('Check in submitted successfully')
+
+        //  Benny's recommendation for display
+        if (response.data.recommendation) {
+          setBennyRecommendation(response.data.recommendation);
+        }
       } else {
-        console.error('check in submission failed.')
+        console.error('check in submission failed.');
       }
     } catch (error) {
-      console.error('Error submitting check-in', error)
+      console.error('Error submitting check-in', error);
     }
   };
 
@@ -107,7 +129,7 @@ const DailyCheckin = () => {
       <main className="flex flex-col items-center pt-16 px-4 bg-white min-h-screen">
         <img src={bennyIcon} alt="Benny the Beaver" className="w-20 h-20 mb-4" />
         <h2 className="text-3xl font-bold mb-2 text-gray-800">Daily Checkin</h2>
-        <p className="text-gray-500 mb-8"></p>
+        <p className="text-gray-500 mb-8">Let's see how you're doing today</p>
 
         {/* Backend status */}
         <div className="mb-4 text-sm flex items-center">
