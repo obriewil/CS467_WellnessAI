@@ -31,7 +31,13 @@ app = FastAPI(title="Benny Wellness AI", lifespan=lifespan)
 # Add CORS for React
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000",
+                   "http://127.0.0.1:3000", # frontend
+                   "http://127.0.0.1:8000", # backend
+                   "http://localhost:8000",
+                   "http://127.0.0.1:5173", # vite
+                   "http://localhost:5173"
+                   ],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"]
@@ -48,6 +54,15 @@ class ChatResponse(BaseModel):
     response: str
     tokens_used: int
     error: Optional[str] = None
+
+class DailyCheckInData(BaseModel):
+    nutrition: str
+    sleep: str
+    fitness: str
+    stress : str
+
+class RecommendationRequest(BaseModel):
+    daily_checkin: DailyCheckInData
 
 # API ENDPOINTS
 @app.get("/")
@@ -106,6 +121,44 @@ async def chat(request: ChatRequest):
         return ChatResponse(
             success=False,
             response="Benny: Having technical difficulties. Let's try again.",
+            error=str(e)
+        )
+    
+@app.post("/recommend", response_model=ChatResponse)
+async def recommend(request: RecommendationRequest):
+    """
+    Get wellness rec based on daily check-in
+    """
+    if not benny:
+        return ChatResponse(
+            success=False,
+            response="Benny is taking a break. Try again later",
+            tokens_used=0
+        )
+    try:
+        # call benny with timeout
+        result = await asyncio.wait_for(
+            benny.recommend(request.daily_checkin.dict(exclude_unset=True)), timeout=30.0)
+        
+        return ChatResponse(
+            success=result["success"],
+            response=result.get("response", ""),
+            tokens_used=result.get("tokens_used", 0),
+            error=result.get("error")
+        )
+    except asyncio.TimeoutError:
+        return ChatResponse(
+            success=False,
+            response="Benny is thinking extra hard. Try again later",
+            tokens_used=0,
+            error="timeout"
+        )
+    except Exception as e:
+        print(f"Recommendation error: {e}")
+        return ChatResponse(
+            success=False,
+            response="Benny is having technical difficulties. Try again later",
+            tokens_used=0,
             error=str(e)
         )
 
