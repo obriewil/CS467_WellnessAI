@@ -237,11 +237,23 @@ class wellness_ai_db:
 
 ############ DATABASE GET FUNCTIONS ##################
 
+    #get chat history main table pk given date
+    def fetch_main_chat_history_pk(self, input_date):
+        pk = self.run_query("SELECT row_id FROM chat_history WHERE date = (?);", input_date)
+        return pk.fetchone()
+
+
+    #gets all chat entries for a certain date and orders by sequence
+    def fetch_chat_logs_by_date(self, input_date):
+        row_id = self.fetch_main_chat_history_pk(input_date)
+        chats = self.run_query("SELECT * FROM chat_history_entries WHERE fk_row_id = (?) ORDER BY sequence_number ASCENDING;", row_id)
+        return chats.fetchall()
+   
+
     #gets user priority pk based on goal name
     def get_user_priority_pk(self, goal_name):
-        self.dictcursor.execute("SELECT * FROM user_priorities WHERE preference_name=(%s);", (goal_name,))
-        goal_pk = self.dictcursor.fetchone()
-        return goal_pk["user_preference_id"]
+        goal_pk = self.run_query("SELECT * FROM user_priorities WHERE preference_name=(?);", goal_name)
+        return goal_pk.fetchone()
     
 
     #gets user preference ratings for benny decision making
@@ -273,7 +285,7 @@ class wellness_ai_db:
 
     #returns 4 week plan
     def get_four_week_plan(self):
-        four_week_plan_get = self.run_query("SELECT * FROM user_program WHERE in_curr_four_week=(%s) ORDER BY row_id ASCENDING", (1,))
+        four_week_plan_get = self.run_query("SELECT * FROM user_program WHERE in_curr_four_week=(?) ORDER BY row_id ASCENDING;", 1)
         return four_week_plan_get.fetchall()
 
 
