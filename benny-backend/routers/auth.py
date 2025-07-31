@@ -1,16 +1,18 @@
 from fastapi import APIRouter, Request
 from starlette.responses import HTMLResponse, RedirectResponse
 from authlib.integrations.starlette_client import OAuth
-from starlette.config import Config
+from config import SECRET_KEY
 import jwt  # pip install pyjwt
+from config import SECRET_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 
-config = Config('.env')
-oauth = OAuth(config)
+oauth = OAuth()
 
 # Google
 oauth.register(
     name='google',
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_id=GOOGLE_CLIENT_ID,
+    client_secret=GOOGLE_CLIENT_SECRET,
     client_kwargs={'scope': 'openid email profile'}
 )
 
@@ -32,8 +34,6 @@ oauth.register(
 
 router = APIRouter(prefix='/api/v1/auth')
 
-SECRET_KEY = config('SECRET_KEY')  # For JWT signing
-
 def generate_jwt(user_info):
     return jwt.encode(user_info, SECRET_KEY, algorithm='HS256')
 
@@ -47,14 +47,23 @@ async def login(provider: str, request: Request):
 async def callback(provider: str, request: Request):
     client = oauth.create_client(provider)
     token = await client.authorize_access_token(request)
+
+    user_info = {}
     if provider in ['google', 'apple']:
-        user = token.get('userinfo')
+        user_info = token.get('userinfo')
     else:  # Facebook
-        user = await client.get('https://graph.facebook.com/me?fields=id,name,email', token=token).json()
-    if not user:
+        user_info = await client.get('https://graph.facebook.com/me?fields=id,name,email', token=token).json()
+
+    if not user_info or 'sub' not in user_info:
         return HTMLResponse('Authentication failed')
-    # Assume user creation/update in DB here, get user_id or info
-    jwt_token = generate_jwt({'sub': user['id'], 'name': user.get('name'), 'email': user.get('email')})
+    
+    jwt_payload = {
+        'sub': user_info['sub'], 
+        'name': user_info.get('name'), 
+        'email': user_info.get('email')
+    }
+    jwt_token = generate_jwt(jwt_payload)
+
     html = f"""
     <script>
         window.opener.postMessage({{ token: '{jwt_token}' }}, '*');

@@ -20,6 +20,9 @@ Install all the required npm packages
 npm install
 ```
 
+```bash
+npm install react-router-dom
+```
 You might need to install tailwind/vite separately, just somethign I ran into
 
 ```bash

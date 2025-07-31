@@ -44,7 +44,7 @@ class wellness_ai_db:
             preference_name VARCHAR(255)
         );
         """
-        self.run_query("DROP TABLE preferences_list;")
+        self.run_query("DROP TABLE IF EXISTS preferences_list;")
         self.run_query(query)
         self.build_possible_pref_table()
 
@@ -81,6 +81,7 @@ class wellness_ai_db:
             user_rating INTEGER,
             user_ref_pref_id INTEGER NOT NULL,
             FOREIGN KEY (user_ref_pref_id) REFERENCES preferences_list(preference_id)
+
         );
         """
         self.run_query(query)
@@ -123,7 +124,7 @@ class wellness_ai_db:
 
     #create daily check in questions table
     def create_check_in_question_table(self):
-        self.run_query("DROP TABLE questions;")
+        self.run_query("DROP TABLE IF EXISTS questions;")
         query = """
             CREATE TABLE IF NOT EXISTS questions(
             row_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -175,7 +176,7 @@ class wellness_ai_db:
         fk = get_pk.fetchone()
         self.run_query("INSERT INTO chat_history_entries (fk_row_id, sequence_number, user_or_benny, entry_text) VALUES (?,?,?,?);", fk, sequence_number, user_or_benny, chat_text)
 
-
+        
     #sets user preferences, takes as input a ranking integer and a goal name input
     def set_preferences(self, pref_name, pref_rank):
         self.run_query("INSERT INTO user_priorities (user_rating, preference_name) VALUES (?, ?);", pref_name, pref_rank)
@@ -234,7 +235,6 @@ class wellness_ai_db:
     def reset_user_success_daily_log(self, date):
         self.run_query("UPDATE daily_log_table SET activity_complete=(?) WHERE log_date=(?);", 0, date)
 
-
     #add ranked goal to goal table
     #can be updated to use preference pk instead of name
     def add_ranked_goal(self, preference_name, preference_rank):
@@ -275,6 +275,7 @@ class wellness_ai_db:
     def get_user_priority_pk(self, goal_name):
         goal_pk = self.run_query("SELECT * FROM user_priorities WHERE preference_name=(?);", goal_name)
         return goal_pk.fetchone()
+
     
 
     #gets user preference ratings for benny decision making
