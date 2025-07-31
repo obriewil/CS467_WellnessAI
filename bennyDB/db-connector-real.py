@@ -137,7 +137,45 @@ class wellness_ai_db:
         self.run_query("INSERT INTO questions (question_text) VALUES ('Finally, let's check in on your well-being. How would you rate your stress levels today?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('Thanks for completing our check in. You're doing great!')")
 
+
+    #create table for conversation history
+    def create_chat_history_table(self):
+        query = """
+            CREATE TABLE IF NOT EXISTS chat_history (
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date VARCHAR(255) NOT NULL
+        );"""
+        self.run_query(query)
+
+
+    #create table for entries into conversation history
+    #0 for user, 1 for benny
+    #sequence number starts at 1 for conversation and increments
+    def create_chat_history_entry_table(self):
+        query = """
+            CREATE TABLE IF NOT EXISTS chat_history_entries (
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fk_row_id INTEGER NOT NULL,
+            sequence_number INTEGER NOT NULL,
+            user_or_benny INTEGER NOT NULL,
+            entry_text TEXT NOT NULL,
+            FOREIGN KEY (fk_row_id) REFERENCES chat_history(row_id)
+        );"""
+        self.run_query(query)
+
 ############### DATABASE ADD AND UPDATE FUNCTIONS ###############
+
+    #add row to chat history table
+    def insert_row_chat_history_main(self, input_date):
+        self.run_query("INSERT INTO chat_history (date) VALUES (?);", input_date)
+
+
+    #add entry into chat history table
+    def add_chat_entry(self, input_date, sequence_number, user_or_benny, chat_text):
+        get_pk = self.run_query("SELECT row_id FROM chat_history WHERE date = (?);", input_date)
+        fk = get_pk.fetchone()
+        self.run_query("INSERT INTO chat_history_entries (fk_row_id, sequence_number, user_or_benny, entry_text) VALUES (?,?,?,?);", fk, sequence_number, user_or_benny, chat_text)
+
 
     #sets user preferences, takes as input a ranking integer and a goal name input
     def set_preferences(self, pref_name, pref_rank):
