@@ -79,9 +79,8 @@ class wellness_ai_db:
             CREATE TABLE IF NOT EXISTS user_priorities (
             user_preference_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_rating INTEGER,
-            preference_name VARCHAR(255) NOT NULL REFERENCES preferences_list(preference_name),
-            user_ref_pref_id INTEGER,
-            CONSTRAINT fk_preference_id FOREIGN KEY (user_ref_pref_id) REFERENCES preferences_list(preference_id)
+            user_ref_pref_id INTEGER NOT NULL,
+            FOREIGN KEY (user_ref_pref_id) REFERENCES preferences_list(preference_id)
         );
         """
         self.run_query(query)
@@ -234,6 +233,28 @@ class wellness_ai_db:
     #undoes the user success logging above if needed for error recovery
     def reset_user_success_daily_log(self, date):
         self.run_query("UPDATE daily_log_table SET activity_complete=(?) WHERE log_date=(?);", 0, date)
+
+
+    #add ranked goal to goal table
+    #can be updated to use preference pk instead of name
+    def add_ranked_goal(self, preference_name, preference_rank):
+        pk = self.run_query("SELECT preference_id FROM preferences_list WHERE preference_name = (?);", preference_name)
+        fk = pk.fetchone()
+        self.run_query("INSERT INTO user_priorities (user_rating, user_ref_pref_id) VALUES (?,?);", preference_rank, fk)
+
+    
+    #delete a row from user priorities table
+    def delete_ranked_goal(self, preference_name):
+        pk = self.run_query("SELECT preference_id FROM preferences_list WHERE preference_name = (?);", preference_name)
+        fk = pk.fetchone()
+        self.run_query("DELETE FROM user_priorities WHERE user_ref_pref_id = (?);", fk)
+
+    
+    #update user ranking of existing priority
+    def delete_ranked_goal(self, preference_name, preference_rank):
+        pk = self.run_query("SELECT preference_id FROM preferences_list WHERE preference_name = (?);", preference_name)
+        fk = pk.fetchone()
+        self.run_query("UPDATE user_priorities SET user_rating = (?) WHERE user_ref_pref_id = (?);", preference_rank, fk)
 
 ############ DATABASE GET FUNCTIONS ##################
 
