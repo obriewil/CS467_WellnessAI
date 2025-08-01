@@ -79,9 +79,9 @@ class wellness_ai_db:
             CREATE TABLE IF NOT EXISTS user_priorities (
             user_preference_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_rating INTEGER,
-            preference_name VARCHAR(255) NOT NULL REFERENCES preferences_list(preference_name),
-            user_ref_pref_id INTEGER,
-            CONSTRAINT fk_preference_id FOREIGN KEY (user_ref_pref_id) REFERENCES preferences_list(preference_id)
+            user_ref_pref_id INTEGER NOT NULL,
+            FOREIGN KEY (user_ref_pref_id) REFERENCES preferences_list(preference_id)
+
         );
         """
         self.run_query(query)
@@ -134,11 +134,49 @@ class wellness_ai_db:
         self.run_query("INSERT INTO questions (question_text) VALUES ('Ready for our daily check in? How did you feel about your nutrition choices today?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('And how would you rate your sleep last night?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('Now for fitness. Did you complete your planned fitness activity today?');")
-        self.run_query("INSERT INTO questions (question_text) VALUES ('Finally, let us check in on your well-being. How would you rate your stress levels today?');")
-        self.run_query("INSERT INTO questions (question_text) VALUES ('Thanks for completing our check in. You are doing great!')")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Finally, let's check in on your well-being. How would you rate your stress levels today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Thanks for completing our check in. You're doing great!')")
+
+
+    #create table for conversation history
+    def create_chat_history_table(self):
+        query = """
+            CREATE TABLE IF NOT EXISTS chat_history (
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date VARCHAR(255) NOT NULL
+        );"""
+        self.run_query(query)
+
+
+    #create table for entries into conversation history
+    #0 for user, 1 for benny
+    #sequence number starts at 1 for conversation and increments
+    def create_chat_history_entry_table(self):
+        query = """
+            CREATE TABLE IF NOT EXISTS chat_history_entries (
+            row_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fk_row_id INTEGER NOT NULL,
+            sequence_number INTEGER NOT NULL,
+            user_or_benny INTEGER NOT NULL,
+            entry_text TEXT NOT NULL,
+            FOREIGN KEY (fk_row_id) REFERENCES chat_history(row_id)
+        );"""
+        self.run_query(query)
 
 ############### DATABASE ADD AND UPDATE FUNCTIONS ###############
 
+    #add row to chat history table
+    def insert_row_chat_history_main(self, input_date):
+        self.run_query("INSERT INTO chat_history (date) VALUES (?);", input_date)
+
+
+    #add entry into chat history table
+    def add_chat_entry(self, input_date, sequence_number, user_or_benny, chat_text):
+        get_pk = self.run_query("SELECT row_id FROM chat_history WHERE date = (?);", input_date)
+        fk = get_pk.fetchone()
+        self.run_query("INSERT INTO chat_history_entries (fk_row_id, sequence_number, user_or_benny, entry_text) VALUES (?,?,?,?);", fk, sequence_number, user_or_benny, chat_text)
+
+        
     #sets user preferences, takes as input a ranking integer and a goal name input
     def set_preferences(self, pref_name, pref_rank):
         self.run_query("INSERT INTO user_priorities (user_rating, preference_name) VALUES (?, ?);", pref_name, pref_rank)
@@ -197,13 +235,47 @@ class wellness_ai_db:
     def reset_user_success_daily_log(self, date):
         self.run_query("UPDATE daily_log_table SET activity_complete=(?) WHERE log_date=(?);", 0, date)
 
+    #add ranked goal to goal table
+    #can be updated to use preference pk instead of name
+    def add_ranked_goal(self, preference_name, preference_rank):
+        pk = self.run_query("SELECT preference_id FROM preferences_list WHERE preference_name = (?);", preference_name)
+        fk = pk.fetchone()
+        self.run_query("INSERT INTO user_priorities (user_rating, user_ref_pref_id) VALUES (?,?);", preference_rank, fk)
+
+    
+    #delete a row from user priorities table
+    def delete_ranked_goal(self, preference_name):
+        pk = self.run_query("SELECT preference_id FROM preferences_list WHERE preference_name = (?);", preference_name)
+        fk = pk.fetchone()
+        self.run_query("DELETE FROM user_priorities WHERE user_ref_pref_id = (?);", fk)
+
+    
+    #update user ranking of existing priority
+    def delete_ranked_goal(self, preference_name, preference_rank):
+        pk = self.run_query("SELECT preference_id FROM preferences_list WHERE preference_name = (?);", preference_name)
+        fk = pk.fetchone()
+        self.run_query("UPDATE user_priorities SET user_rating = (?) WHERE user_ref_pref_id = (?);", preference_rank, fk)
+
 ############ DATABASE GET FUNCTIONS ##################
+
+    #get chat history main table pk given date
+    def fetch_main_chat_history_pk(self, input_date):
+        pk = self.run_query("SELECT row_id FROM chat_history WHERE date = (?);", input_date)
+        return pk.fetchone()
+
+
+    #gets all chat entries for a certain date and orders by sequence
+    def fetch_chat_logs_by_date(self, input_date):
+        row_id = self.fetch_main_chat_history_pk(input_date)
+        chats = self.run_query("SELECT * FROM chat_history_entries WHERE fk_row_id = (?) ORDER BY sequence_number ASCENDING;", row_id)
+        return chats.fetchall()
+   
 
     #gets user priority pk based on goal name
     def get_user_priority_pk(self, goal_name):
-        self.dictcursor.execute("SELECT * FROM user_priorities WHERE preference_name=(%s);", (goal_name,))
-        goal_pk = self.dictcursor.fetchone()
-        return goal_pk["user_preference_id"]
+        goal_pk = self.run_query("SELECT * FROM user_priorities WHERE preference_name=(?);", goal_name)
+        return goal_pk.fetchone()
+
     
 
     #gets user preference ratings for benny decision making
@@ -235,7 +307,7 @@ class wellness_ai_db:
 
     #returns 4 week plan
     def get_four_week_plan(self):
-        four_week_plan_get = self.run_query("SELECT * FROM user_program WHERE in_curr_four_week=(%s) ORDER BY row_id ASCENDING", (1,))
+        four_week_plan_get = self.run_query("SELECT * FROM user_program WHERE in_curr_four_week=(?) ORDER BY row_id ASCENDING;", 1)
         return four_week_plan_get.fetchall()
 
 
