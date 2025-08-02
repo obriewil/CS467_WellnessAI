@@ -1,12 +1,17 @@
 """Benny - Wellness AI"""
 
-import os
+import os, sys
 from datetime import datetime
 from typing import Dict, Optional
 from enum import Enum
+from pathlib import Path
 
 from openai import AzureOpenAI
 from dotenv import load_dotenv
+
+# import db
+sys.path.append(str(Path(__file__).parent.parent.parent.parent / "bennyDB"))
+import db_connector_real
 
 # Load environment variables
 load_dotenv()
@@ -40,10 +45,11 @@ class BennyWellnessAI:
             - Provide 1 actionable recommendation
             - Give 1-2 reasons why this action works (research based,
             - but simple)
-            - Keep responses to 150-200 words
+            - Keep responses to 150 words
             - Ask one thoughtful follow-up question
+            - If user wants suggestions, give 1 or 2 max to keep chat shorter
             """,
-            "max_tokens": 200,
+            "max_tokens": 150,
             "temperature": 0.6
         },
         BennyMode.RECOMMEND: {
@@ -80,6 +86,9 @@ class BennyWellnessAI:
 
         # conversation tracking
         self.conversation_history = []
+
+        # db connection
+        self.db = db_connector_real.wellness_ai_db()
         
         print("Benny initialized successful!")
 
@@ -92,11 +101,39 @@ class BennyWellnessAI:
         Returns: 
             Response dictionary with chat response
         """
-
-        return await self._generate_response(
+        # Generate response
+        response = await self._generate_response(
             message=message,
             mode=BennyMode.CHAT
         )
+        # save chat to db
+        if response["success"]:
+            await self._save_chat_to_db(message, response["response"])
+
+        return response
+    
+    async def _save_chat_to_db(self, user_message: str, benny_response: str):
+        """Save chat to database"""
+        try:
+            today = datetime.now().strftime("%m/%d/%Y")
+
+            # check if chat exists today, if not create
+            existing_chat = self.db.fetch_main_chat_history_pk(today)
+            if not existing_chat:
+                self.db.insert_row_chat_history_main(today)
+                # refetch
+                existing_chat = self.db.fetch_main_chat_history_pk(today)
+            
+            # get number of entries
+            existing_entries = self.db.fetch_chat_logs_by_date(today)
+            seq_num = len(existing_entries) + 1
+
+            self.db.add_chat_entry(today, seq_num, 0, user_message)
+            self.db.add_chat_entry(today, seq_num + 1, 1, benny_response)
+            print("Chat saved to Database")
+        
+        except Exception as e:
+            print(f"Error saving to database: {e}")
     
     async def recommend(self, daily_checkin: Dict) -> Dict:
         """
