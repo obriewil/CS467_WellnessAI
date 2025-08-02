@@ -24,6 +24,8 @@ class wellness_ai_db:
         self.create_sql_create_ideal_plan_table()
         self.create_log_table()
         self.create_check_in_question_table()
+        self.create_chat_history_table()
+        self.create_chat_history_entry_table()
         print("initialized")
 
 
@@ -173,7 +175,8 @@ class wellness_ai_db:
     #add entry into chat history table
     def add_chat_entry(self, input_date, sequence_number, user_or_benny, chat_text):
         get_pk = self.run_query("SELECT row_id FROM chat_history WHERE date = (?);", input_date)
-        fk = get_pk.fetchone()
+        fk_tuple = get_pk.fetchone()
+        fk = fk_tuple[0]
         self.run_query("INSERT INTO chat_history_entries (fk_row_id, sequence_number, user_or_benny, entry_text) VALUES (?,?,?,?);", fk, sequence_number, user_or_benny, chat_text)
 
         
@@ -266,8 +269,9 @@ class wellness_ai_db:
 
     #gets all chat entries for a certain date and orders by sequence
     def fetch_chat_logs_by_date(self, input_date):
-        row_id = self.fetch_main_chat_history_pk(input_date)
-        chats = self.run_query("SELECT * FROM chat_history_entries WHERE fk_row_id = (?) ORDER BY sequence_number ASCENDING;", row_id)
+        row_id_tuple = self.fetch_main_chat_history_pk(input_date)
+        row_id = row_id_tuple[0]
+        chats = self.run_query("SELECT * FROM chat_history_entries WHERE fk_row_id = (?) ORDER BY sequence_number ASC;", row_id)
         return chats.fetchall()
    
 
@@ -301,13 +305,13 @@ class wellness_ai_db:
 
     #returns form questions for frontend as dictionary
     def get_form_questions_daily_checkin(self):
-        questions = self.run_query("SELECT * FROM questions ORDER BY row_id ASCENDING;")
+        questions = self.run_query("SELECT * FROM questions ORDER BY row_id ASC;")
         return questions.fetchall()
 
 
     #returns 4 week plan
     def get_four_week_plan(self):
-        four_week_plan_get = self.run_query("SELECT * FROM user_program WHERE in_curr_four_week=(?) ORDER BY row_id ASCENDING;", 1)
+        four_week_plan_get = self.run_query("SELECT * FROM user_program WHERE in_curr_four_week=(?) ORDER BY row_id ASC;", 1)
         return four_week_plan_get.fetchall()
 
 
