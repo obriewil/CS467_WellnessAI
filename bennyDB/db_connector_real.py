@@ -134,7 +134,7 @@ class wellness_ai_db:
         self.run_query("INSERT INTO questions (question_text) VALUES ('Ready for our daily check in? How did you feel about your nutrition choices today?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('And how would you rate your sleep last night?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('Now for fitness. Did you complete your planned fitness activity today?');")
-        self.run_query("INSERT INTO questions (question_text) VALUES ('Finally, let uss check in on your well-being. How would you rate your stress levels today?');")
+        self.run_query("INSERT INTO questions (question_text) VALUES ('Finally, let us check in on your well-being. How would you rate your stress levels today?');")
         self.run_query("INSERT INTO questions (question_text) VALUES ('Thanks for completing our check in. You are doing great!')")
 
 
