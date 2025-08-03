@@ -101,6 +101,50 @@ async def submit_checkin(submission: CheckInSubmission):
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/api/chat/recent")
+async def get_recent_chat_messages():
+    """Get the last 10 recent chat messages"""
+
+    if not db:
+        raise HTTPException(status_code=500, detail="Database not connected")
+    
+    try:
+        # get database chat history
+        query = """
+        SELECT
+            che.sequence_number,
+            che.user_or_benny,
+            che.entry_text,
+            ch.date
+        FROM chat_history_entries che
+        JOIN chat_history ch ON che.fk_row_id =  ch.row_id
+        ORDER BY ch.date DESC, che.sequence_number DESC
+        LIMIT 10
+        """
+
+        result = db.run_query(query)
+        messages = result.fetchall()
+
+        # format response
+        formatted_messages = []
+        for message in messages:
+            formatted_messages.append({
+                "sequence_number": message[0],
+                "user_or_benny": message[1],
+                "entry_text": message[2],
+                "date": message[3]
+            })
+
+        formatted_messages.reverse()
+        return {
+            "success": True,
+            "messages": formatted_messages
+        }
+    
+    except Exception as e:
+        print(f"Error fetching recent messages: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
            
 
 if __name__ == "__main__":
