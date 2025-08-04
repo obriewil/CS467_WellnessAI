@@ -121,8 +121,38 @@ PORT: http://localhost:8001
 *Ensure this service is running before backend operations that require LLM calls.
 
 
-# Running Tests
-** NEED TO FILL IN**
+# Testing Setup
+
+This project includes automated testing for both the AI service and database components.
+
+### Test Files
+
+benny-ai-service/test_benny.py - Unit tests for the benny AI service functionality
+
+bennyDB/test_bennyDB.py - Database tests for the bennyDB connector and operations
+
+### Automated Testing
+
+The tests run automatically via GitHub Actions on every push or pull request to the main branch. The database tests automatically create and clean up a temporary SQLite database file during execution.
+
+bennyai_test.yml - Runs the AI service tests using Python's unittest framework
+
+bennydb_test.yml - Runs the database tests using pytest framework
+
+### Running Tests Locally
+
+To run tests manually:
+
+```bash
+# AI Service Tests
+cd benny-ai-service
+python -m unittest test_benny.py
+
+# Database Tests
+cd bennyDB
+pytest -v test_bennyDB.py
+```
+
 
 # Tech Stack
 
