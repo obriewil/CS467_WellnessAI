@@ -45,6 +45,7 @@ async def login(provider: str, request: Request):
 
 @router.get('/{provider}/callback', name='auth_callback')
 async def callback(provider: str, request: Request):
+    print(f"Generated Redirect URI: {request.url}") 
     client = oauth.create_client(provider)
     token = await client.authorize_access_token(request)
 

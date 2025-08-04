@@ -104,13 +104,23 @@ async def submit_checkin(submission: CheckInSubmission):
     
 @app.get("/api/chat/recent")
 async def get_recent_chat_messages():
-    """Get the last 10 recent chat messages"""
+#
+# async def get_recent_chat_messages(current_user: dict = Depends(users.get_current_user)):
+#
+    """
+    Get the last 10 recent chat messages
+    """
 
     if not db:
         raise HTTPException(status_code=500, detail="Database not connected")
     
+    # Add this in to query individual user history
+    # user_id = current_user['user']['sub']
+    # print(f"Fetching chat history for user: {user_id}")
+    
     try:
         # get database chat history
+        # -- WHERE ch.user_id = ?  <-- Something like this needs to be added to separate user history
         query = """
         SELECT
             che.sequence_number,
@@ -123,6 +133,8 @@ async def get_recent_chat_messages():
         LIMIT 10
         """
 
+        # result = db.run_query(query, user_id) 
+        # The query would need the user_id
         result = db.run_query(query)
         messages = result.fetchall()
 

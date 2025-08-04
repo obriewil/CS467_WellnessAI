@@ -58,8 +58,9 @@ const handleSubmit = async (userInput) => {
       aiMessage = { type: 'ai', text: "Error" };
     }
   } else {
-    // For now it's a boiler plate response, until sign up
-    aiMessage = { type: 'ai', text: "Thanks! Let's proceed." };
+    // If user is not logged in, save the message and show the login modal
+    sessionStorage.setItem('pendingMessage', userInput);
+    aiMessage = { type: 'ai', text: "Thanks! Let's get you signed in to continue." };
   }
 
   // Simulate delay for AI response

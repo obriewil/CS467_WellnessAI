@@ -31,13 +31,17 @@ export const SessionProvider = ({ children }) => {
  }, []);
 
  const login = (token) => {
- localStorage.setItem('authToken', token);
- window.location.reload();
+    localStorage.setItem('authToken', token);
+    // Redirect to the chat page. This causes a full page navigation,
+    // which is more robust if the component structure causes hook errors.
+    window.location.href = '/chat';
  };
 
  const logout = () => {
- localStorage.removeItem('authToken');
- setSession(null);
+    localStorage.removeItem('authToken');
+    setSession(null);
+    // Redirect to home on logout for a clean user experience.
+    window.location.href = '/';
  };
 
  return (
