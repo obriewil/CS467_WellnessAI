@@ -19,7 +19,7 @@ export const SessionProvider = ({ children }) => {
  const res = await axios.get('http://localhost:8000/api/v1/users/me', {
  headers: { Authorization: `Bearer ${token}` }
  });
- setSession({ user: res.data, token });
+ setSession({ user: res.data.user, token });
  } catch (error) {
  console.error("Failed to fetch user:", error);
  localStorage.removeItem('authToken');

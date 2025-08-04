@@ -6,7 +6,7 @@ import siteIcon from '../assets/site_icon.png';
 import { Link } from 'react-router-dom';
 import AuthModal from './Auth'; 
 
-const Header = () => { 
+const Header = ({ isDashboardPage = false }) => { 
   const { session, loading, logout } = useSession();
   
   const [showSignUp, setShowSignUp] = useState(false);
@@ -26,9 +26,15 @@ const Header = () => {
             <div className="w-24 h-8 bg-gray-200 rounded animate-pulse"></div>
           ) : session ? (
             <div className="flex items-center gap-4">
-              <Link to="/dashboard" className="font-semibold text-gray-700 hover:text-black">
-                Welcome, {session.user.name}!
-              </Link>
+              {isDashboardPage ? (
+                <span className="font-semibold text-gray-700">
+                  Welcome, {session.user.name}!
+                </span>
+              ) : (
+                <Link to="/dashboard" className="font-semibold text-gray-700 hover:text-black">
+                  Welcome, {session.user.name}!
+                </Link>
+              )}
               <button onClick={logout} className="text-red-600 font-semibold hover:text-red-800 transition-colors">
                 Log Out
               </button>

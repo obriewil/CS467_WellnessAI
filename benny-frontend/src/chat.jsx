@@ -35,8 +35,14 @@ function Chat() {
       const res = await axios.post(
         `${API_URL}/chat`,
         { message: userInput },
-        /*  Add the user session token with message */
-        { headers: { Authorization: `Bearer ${session.token}` } }
+        /*  Add the user session token with message 
+
+        Currently the backend does not accept session.token headers and will
+        default to the "Sorry, something went wrong", if this is uncommented
+
+        { headers: { Authorization: `Bearer ${session.token}` } } 
+         
+        */
       );
 
       let aiMessage;

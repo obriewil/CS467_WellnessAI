@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import Header from './components/Header';
 import { FaUserCircle, FaEnvelope, FaLock } from 'react-icons/fa';
+import { useSession } from './contexts/SessionContext';
+import { Link } from 'react-router-dom';
 
 const PasswordChangeModal = ({ isOpen, onClose, onSubmit }) => {
   const [oldPassword, setOldPassword] = useState('');
@@ -55,20 +57,13 @@ const PasswordChangeModal = ({ isOpen, onClose, onSubmit }) => {
 
 
 const Dashboard = () => {
-  const mockUser = {
-    name: 'Alex Doe',
-    email: 'alex.doe@example.com',
-  };
-
-  // 2. Add state to control the password modal visibility
+  const { session, loading } = useSession();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
-  // 3. Placeholder function for changing the password
   const handleChangePassword = async ({ oldPassword, newPassword }) => {
     console.log("Attempting to change password...");
     try {
       // This is where the actual API call will go.
-      // It's commented out because we are not connected to a backend yet.
       /*
       const response = await axios.post('/api/users/change-password', {
         oldPassword,
@@ -76,9 +71,8 @@ const Dashboard = () => {
       });
       */
       
-      // Simulate a successful API call for the demo
       alert("Password changed successfully! (Demo)");
-      setIsPasswordModalOpen(false); // Close the modal on success
+      setIsPasswordModalOpen(false);
 
     } catch (error) {
       console.error("Failed to change password:", error);
@@ -86,7 +80,6 @@ const Dashboard = () => {
     }
   };
 
-  // 4. Placeholder function for logging out
   const handleLogout = async () => {
     console.log("Attempting to log out...");
     try {
@@ -95,7 +88,6 @@ const Dashboard = () => {
       await axios.post('/api/v1/auth/logout');
       */
       
-      // For the demo, we'll just redirect to the home page
       alert("Logging you out... (Demo)");
       window.location.href = '/';
 
@@ -105,10 +97,35 @@ const Dashboard = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <div className="text-center py-20 font-semibold text-gray-600">Loading...</div>
+      </>
+    );
+  }
+
+  if (!session) {
+    return (
+      <>
+        <Header />
+        <div className="max-w-3xl mx-auto text-center py-20">
+          <h1 className="text-3xl font-bold text-gray-800">Access Denied</h1>
+          <p className="text-gray-600 mt-4">
+            Please log in to view your dashboard.
+          </p>
+          <Link to="/" className="mt-6 inline-block bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors">
+            Return to Home
+          </Link>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
-      <Header />
+      <Header isDashboardPage={true} />
       <div className="bg-gray-50 min-h-screen py-10 px-4">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-4xl font-bold text-gray-800 mb-8">User Settings</h1>
@@ -119,14 +136,14 @@ const Dashboard = () => {
                 <FaUserCircle className="text-gray-400 mr-4" size={24} />
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Full Name</label>
-                  <p className="text-lg text-gray-900">{mockUser.name}</p>
+                  <p className="text-lg text-gray-900">{session.user.name}</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <FaEnvelope className="text-gray-400 mr-4" size={24} />
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Email Address</label>
-                  <p className="text-lg text-gray-900">{mockUser.email}</p>
+                  <p className="text-lg text-gray-900">{session.user.email}</p>
                 </div>
               </div>
             </div>
