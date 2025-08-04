@@ -1,39 +1,55 @@
+# File: bennydb_test.yml
+# Author: William O'Brien
+# Description: GitHub Actions workflow for running tests on the bennyDB database component.
+#   This workflow automatically runs pytest tests whenever code is pushed to or
+#   a pull request is made against the main branch. It creates a temporary SQLite
+#   database for testing and cleans it up after test is complete whether the
+#   test passes or fails.
+
 name: Run Tests for bennyDB
 
+# Define when this workflow should run
 on:
   push:
-    branches: [ main ]
+    branches: [ main ]      # Run on pushes to main branch
   pull_request:
-    branches: [ main ]
+    branches: [ main ]      # Run on pull requests targeting main branch
 
+# Define the jobs to run
 jobs:
   run-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Use Ubuntu as the runner environment
 
     steps:
+      # Download the repository code to the runner
       - name: Check out the repo
         uses: actions/checkout@v4
 
+      # Set up Python environment with specified version
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
+      # Install required Python packages for testing
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pytest requests
 
+      # Create an empty SQLite database file for testing
       - name: Create empty BennyDB.sqlite3
         working-directory: ./bennyDB
         run: |
           python -c "import sqlite3; sqlite3.connect('BennyDB.sqlite3').close()"
 
+      # Execute the pytest tests in the bennyDB directory
       - name: Run pytest
         working-directory: ./bennyDB
         run: |
           pytest -v test_bennyDB.py
 
+      # Clean up the temporary database file after tests complete
       - name: Remove BennyDB.sqlite3
         if: always()  # ensures it runs even if tests fail
         working-directory: ./bennyDB
