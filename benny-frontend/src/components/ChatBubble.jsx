@@ -7,7 +7,7 @@ const ChatBubble = ({ message, icon, buttons, onButtonClick }) => {
 
   return (
     <div className="flex items-start mb-4">
-      <img src={icon} alt="Benny" className="w-8 h-8 mr-2 rounded-full" />
+      <img src={icon} alt="Benny" className="w-12 h-12 -mr-2 mt-2 rounded-full" />
       <div className="bg-gray-0 p-4 rounded-lg">
         <p className="text-xl">{displayedText}</p>
         {isTypingComplete && buttons && buttons.length > 0 && (
