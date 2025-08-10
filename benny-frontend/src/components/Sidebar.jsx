@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
-import { FaCommentDots, FaThLarge, FaHistory } from 'react-icons/fa';
+import { FaCommentDots, FaCalendar, FaHistory } from 'react-icons/fa';
 import siteIcon from '../assets/site_icon.png';
 
 const Sidebar = ({ isExpanded, onToggle }) => {
@@ -57,16 +57,16 @@ const Sidebar = ({ isExpanded, onToggle }) => {
           </li>
           <li className="mb-4">
             <Link 
-              to="/dashboard" 
+              to="/daily-checkin" 
               className="flex items-center p-3 rounded-lg h-12"
-              style={getLinkStyle('dashboard')}
-              onMouseEnter={() => setHoveredLink('dashboard')}
+              style={getLinkStyle('daily-checkin')}
+              onMouseEnter={() => setHoveredLink('daily-checkin')}
               onMouseLeave={() => setHoveredLink(null)}
             >
-              <FaThLarge size={24} className="flex-shrink-0" />
+              <FaCalendar size={24} className="flex-shrink-0" />
               {isExpanded && (
                 <span className="ml-4 font-medium text-l">
-                  Dashboard
+                  Daily Check-In
                 </span>
               )}
             </Link>
