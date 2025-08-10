@@ -132,10 +132,10 @@ const DailyCheckin = () => {
         <p className="text-gray-500 mb-8">Let's see how you're doing today</p>
 
         {/* Backend status */}
-        <div className="mb-4 text-sm flex items-center">
+        {/* <div className="mb-4 text-sm flex items-center">
           <span className={`inline-block w-2 h-2 rounded-full mr-2 ${backendConnected ? 'bg-green-500' : 'bg-orange-500'}`}></span>
           {backendConnected ? 'Backend connected' : 'Backend offline'}
-        </div>
+        </div> */}
 
         {/* This div contains the chat bubbles */}
         <div className="w-full max-w-3xl">
