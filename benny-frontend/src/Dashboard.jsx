@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
-import Header from './components/Header';
-import { FaUserCircle, FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaUserCircle, FaEnvelope } from 'react-icons/fa';
 import { useSession } from './contexts/SessionContext';
 import { Link } from 'react-router-dom';
 
@@ -57,20 +55,13 @@ const PasswordChangeModal = ({ isOpen, onClose, onSubmit }) => {
 
 
 const Dashboard = () => {
-  const { session, loading } = useSession();
+  // 1. Get the 'logout' function from the useSession hook
+  const { session, loading, logout } = useSession();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const handleChangePassword = async ({ oldPassword, newPassword }) => {
     console.log("Attempting to change password...");
     try {
-      // This is where the actual API call will go.
-      /*
-      const response = await axios.post('/api/users/change-password', {
-        oldPassword,
-        newPassword,
-      });
-      */
-      
       alert("Password changed successfully! (Demo)");
       setIsPasswordModalOpen(false);
 
@@ -80,56 +71,32 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogout = async () => {
-    console.log("Attempting to log out...");
-    try {
-      // The actual API call to invalidate the session/token on the backend
-      /*
-      await axios.post('/api/v1/auth/logout');
-      */
-      
-      alert("Logging you out... (Demo)");
-      window.location.href = '/';
-
-    } catch (error) {
-      console.error("Failed to log out:", error);
-      alert("Logout failed. See console for details. (This is a demo)");
-    }
-  };
+  // 2. The local 'handleLogout' function has been removed.
 
   if (loading) {
-    return (
-      <>
-        <Header />
-        <div className="text-center py-20 font-semibold text-gray-600">Loading...</div>
-      </>
-    );
+    return <div className="text-center py-20 font-semibold text-gray-600">Loading...</div>;
   }
 
   if (!session) {
     return (
-      <>
-        <Header />
-        <div className="max-w-3xl mx-auto text-center py-20">
-          <h1 className="text-3xl font-bold text-gray-800">Access Denied</h1>
-          <p className="text-gray-600 mt-4">
-            Please log in to view your dashboard.
-          </p>
-          <Link to="/" className="mt-6 inline-block bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors">
-            Return to Home
-          </Link>
-        </div>
-      </>
+      <div className="max-w-3xl mx-auto text-center py-20">
+        <h1 className="text-3xl font-bold text-gray-800">Access Denied</h1>
+        <p className="text-gray-600 mt-4">
+          Please log in to view your dashboard.
+        </p>
+        <Link to="/" className="mt-6 inline-block bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors">
+          Return to Home
+        </Link>
+      </div>
     );
   }
 
   return (
     <>
-      <Header isDashboardPage={true} />
-      <div className="bg-gray-50 min-h-screen py-10 px-4">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-4xl font-bold text-gray-800 mb-8">User Settings</h1>
-          <div className="bg-white p-8 rounded-lg shadow-md mb-8">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-4xl font-bold text-gray-800 mb-8">User Settings</h1>
+        
+        <div className="bg-white p-8 rounded-lg shadow-md mb-8">
             <h2 className="text-2xl font-semibold text-gray-700 mb-6 border-b pb-4">Profile Information</h2>
             <div className="space-y-6">
               <div className="flex items-center">
@@ -147,10 +114,9 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
-          </div>
+        </div>
 
-          {/* Account Security Section */}
-          <div className="bg-white p-8 rounded-lg shadow-md">
+        <div className="bg-white p-8 rounded-lg shadow-md">
             <h2 className="text-2xl font-semibold text-gray-700 mb-6 border-b pb-4">Account Security</h2>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -170,17 +136,17 @@ const Dashboard = () => {
                   <p className="font-medium text-gray-800">Log Out</p>
                   <p className="text-sm text-gray-500">You will be returned to the home page.</p>
                 </div>
+                {/* 3. The button now calls 'logout' directly and its style is updated */}
                 <button 
-                  onClick={handleLogout}
-                  className="bg-red-100 text-red-700 font-semibold py-2 px-4 rounded-lg hover:bg-red-200"
+                  onClick={logout}
+                  className="text-red-600 font-semibold hover:text-red-800 transition-colors"
                 >
                   Log Out
                 </button>
               </div>
             </div>
-          </div>
-
         </div>
+
       </div>
 
       <PasswordChangeModal 

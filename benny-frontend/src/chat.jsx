@@ -1,59 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-// import { useSession } from './contexts/SessionContext'; // JWT Token for remembering users
 import ChatBubble from './components/ChatBubble';
 import ChatInput from './components/ChatInput';
-import Header from './components/Header';
 import bennyIcon from './assets/benny_icon.png';
+import { useTypingEffect } from './hooks/useTypingEffect';
 
-// API URL from env
 const API_URL = import.meta.env.VITE_API_URL;
+
+const GREETING_PROMPTS = [
+  "Hi, I can help with nutrition, fitness, and stress. Where would you like to start?",
+  "Hey! I'm all about helping you eat better, move more, and stress less. What's on your mind?",
+  "Are you looking to boost your energy with better food, get stronger with fitness, or find your calm?",
+];
 
 function Chat() {
   const [messages, setMessages] = useState(() => {
     const pendingMessage = sessionStorage.getItem('pendingMessage');
-    // If there's a pending message, start with an empty chat.
-    // Otherwise, show the default welcome message.
-    return pendingMessage ? [] : [{ type: 'ai', text: "Welcome to the chat! How can I help you today?" }];
+    if (pendingMessage) return [];
+    const randomIndex = Math.floor(Math.random() * GREETING_PROMPTS.length);
+    return [{ type: 'ai', text: GREETING_PROMPTS[randomIndex] }];
   });
-  // Uncomment to add User session tracking
-  // const { session } = useSession(); 
+  
+  const chatEndRef = useRef(null);
+  const initialMessageText = messages.length > 0 && messages[0].type === 'ai' ? messages[0].text : "";
+  const animatedGreeting = useTypingEffect(initialMessageText, 20);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSubmit = async (userInput) => {
     const userMessage = { type: 'user', text: userInput };
-    setMessages(prev => [...prev, userMessage]);
 
-    /* Session reminder to login
-    if (!session) {
-      const aiMessage = { type: 'ai', text: "Please log in to chat with Benny." };
-      setMessages(prev => [...prev, aiMessage]);
-      return;
+    // This is the only change. It checks if this is the first message.
+    const isFirstMessage = messages.length <= 1 && (!messages[0] || messages[0].type === 'ai');
+
+    if (isFirstMessage) {
+      // If it is, we replace the welcome message with the user's first message.
+      setMessages([userMessage]);
+    } else {
+      // Otherwise, we just add the new message to the list.
+      setMessages(prev => [...prev, userMessage]);
     }
-    */
 
     try {
-      const res = await axios.post(
-        `${API_URL}/chat`,
-        { message: userInput },
-        /*  Add the user session token with message 
-
-        Currently the backend does not accept session.token headers and will
-        default to the "Sorry, something went wrong", if this is uncommented
-
-        { headers: { Authorization: `Bearer ${session.token}` } } 
-         
-        */
-      );
-
-      let aiMessage;
-      if (res.data && res.data.success) {
-        aiMessage = { type: 'ai', text: res.data.response };
-      } else {
-        // If API stops working
-        aiMessage = { type: 'ai', text: res.data.response || "Sorry, something went wrong." };
-      }
+      const res = await axios.post(`${API_URL}/chat`, { message: userInput });
+      let aiMessage = { type: 'ai', text: res.data.response || "Sorry, something went wrong." };
+      // This will correctly append the AI response to the new message history
       setMessages(prev => [...prev, aiMessage]);
-
     } catch (error) {
       console.error("Failed to send message:", error);
       let errorMessage = "Sorry, I couldn't connect to the server.";
@@ -65,36 +59,50 @@ function Chat() {
     }
   };
   
-  // On component mount, check for a pending message from the homepage
   useEffect(() => {
     const pendingMessage = sessionStorage.getItem('pendingMessage');
     if (pendingMessage) {
-      // If a message is found, submit it to the chat
       handleSubmit(pendingMessage);
-      // Clean up sessionStorage to prevent the message from being sent again
       sessionStorage.removeItem('pendingMessage');
     }
-  }, []); // The empty dependency array ensures this effect runs only once
+  }, []);
+
+  const showWelcomeScreen = messages.length <= 1 && (!messages[0] || messages[0].type === 'ai');
 
   return (
-    <div className="min-h-screen bg-white">
-      <Header />
-      <main className="flex flex-col items-center pt-16 px-4">
-        <div className="w-full max-w-2xl">
-          {messages.map((msg, idx) =>
-            msg.type === 'ai' ? (
-              <ChatBubble key={idx} message={msg.text} icon={bennyIcon} />
-            ) : (
-              <div key={idx} className="flex justify-end mb-4">
-                <div className="bg-blue-100 p-4 rounded-lg">
-                  <p>{msg.text}</p>
-                </div>
-              </div>
-            )
-          )}
-          <ChatInput onSubmit={handleSubmit} />
+    <div className="flex flex-col h-full">
+      {showWelcomeScreen ? (
+        <div className="flex flex-col items-center justify-center text-center flex-grow pb-88">
+          <div className="w-full max-w-3xl">
+            <img src={bennyIcon} alt="Benny the Beaver" className="w-50 h-50 mb-0 mx-auto" />
+            <h2 className="text-4xl font-bold -mt-3 mb-4 text-gray-800">Benny WellnessAI</h2>
+            <p className="text-gray-500 max-w-none mx-auto mb-8">
+              {animatedGreeting}
+            </p>
+            <ChatInput onSubmit={handleSubmit} />
+          </div>
         </div>
-      </main>
+      ) : (
+        <>
+          <div className="flex-grow w-full max-w-3xl mx-auto overflow-y-auto p-4">
+            {messages.map((msg, idx) =>
+              msg.type === 'ai' ? (
+                <ChatBubble key={idx} message={msg.text} icon={bennyIcon} />
+              ) : (
+                <div key={idx} className="flex justify-end mb-4">
+                  <div className="bg-blue-100 p-4 rounded-lg">
+                    <p className="text-xl">{msg.text}</p>
+                  </div>
+                </div>
+              )
+            )}
+            <div ref={chatEndRef} />
+          </div>
+          <div className="w-full max-w-3xl mx-auto pt-4">
+            <ChatInput onSubmit={handleSubmit} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
