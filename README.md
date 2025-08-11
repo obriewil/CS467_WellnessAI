@@ -26,10 +26,6 @@ CS467_WellnessAI/
 
 |__ bennyDB/    # Database for storing user information and daily check ins
 
-|__ testing/    # Testing for individual features
-
-|__ tests.py & tests.js/    # Regression testing files for checking before merges
-
 
 # Prerequisites
 Make sure you have the following installed:
